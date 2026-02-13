@@ -1,0 +1,34 @@
+# mi7soft-daemon configuration file
+# This file defines the processes to be managed by the daemon
+
+[daemon]
+# Path to the daemon's PID file
+pid_file = "/var/run/mi7soft-daemon.pid"
+
+# Path to the daemon's log file
+log_file = "/var/log/mi7soft-daemon.log"
+
+# Process status check interval in seconds
+check_interval = 5
+
+# Processes to manage
+[[processes]]
+name = "php-worker"
+command = "php"
+args = ["start.php"]
+working_directory = "/path/to/project"
+auto_restart = true
+log_file = "/var/log/php-worker.log"
+
+[[processes]]
+name = "web-server"
+command = "/usr/bin/python3"
+args = ["-m", "http.server", "8000"]
+working_directory = "/var/www"
+auto_restart = true
+
+[[processes]]
+name = "background-job"
+command = "/usr/bin/my-service"
+args = ["--config", "/etc/my-service/config.yml"]
+auto_restart = true

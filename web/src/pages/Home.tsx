@@ -1,0 +1,194 @@
+import { motion } from 'framer-motion';
+import { ArrowRight, Zap, Shield, Activity, Star } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useTranslation, Trans } from 'react-i18next';
+
+const Home = () => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="overflow-hidden">
+      {/* Hero Section */}
+      <section className="relative min-h-[90vh] flex items-center justify-center bg-gradient-to-b from-primary-start to-primary-end overflow-hidden">
+        {/* Abstract Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-1/2 -left-1/4 w-full h-full bg-accent-cyan/10 blur-[120px] rounded-full animate-pulse-slow" />
+          <div className="absolute -bottom-1/2 -right-1/4 w-full h-full bg-accent-pink/10 blur-[120px] rounded-full animate-pulse-slow" />
+        </div>
+
+        <div className="container mx-auto px-6 relative z-10 text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8 }}
+            className="mb-8 inline-block"
+          >
+            <span className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm text-accent-cyan font-medium backdrop-blur-sm">
+              {t('home.versionBadge')}
+            </span>
+          </motion.div>
+          
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+            className="text-5xl md:text-7xl font-display font-bold mb-6 leading-tight"
+          >
+            <Trans i18nKey="home.heroTitle" components={{ 1: <span className="text-gradient" /> }} />
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="text-xl md:text-2xl text-gray-300 mb-10 max-w-3xl mx-auto"
+          >
+            {t('home.heroSubtitle')}
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6"
+          >
+            <Link
+              to="/contact"
+              className="px-8 py-4 bg-accent-cyan text-black font-bold rounded-lg hover:bg-accent-cyan/90 transition-all flex items-center group"
+            >
+              {t('home.getStarted')}
+              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link
+              to="/features"
+              className="px-8 py-4 bg-white/5 border border-white/10 text-white font-bold rounded-lg hover:bg-white/10 transition-all backdrop-blur-sm"
+            >
+              {t('home.viewFeatures')}
+            </Link>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Value Proposition Section */}
+      <section className="py-24 bg-background">
+        <div className="container mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            {[
+              {
+                icon: <Zap className="w-10 h-10 text-accent-cyan" />,
+                title: t('home.features.highPerformance.title'),
+                description: t('home.features.highPerformance.description')
+              },
+              {
+                icon: <Shield className="w-10 h-10 text-accent-pink" />,
+                title: t('home.features.secure.title'),
+                description: t('home.features.secure.description')
+              },
+              {
+                icon: <Activity className="w-10 h-10 text-purple-400" />,
+                title: t('home.features.monitoring.title'),
+                description: t('home.features.monitoring.description')
+              }
+            ].map((feature, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="p-8 rounded-2xl bg-surface-card border border-white/5 hover:border-white/10 transition-colors group"
+              >
+                <div className="mb-6 p-4 bg-white/5 rounded-xl inline-block group-hover:bg-white/10 transition-colors">
+                  {feature.icon}
+                </div>
+                <h3 className="text-2xl font-display font-bold mb-4">{feature.title}</h3>
+                <p className="text-gray-400 leading-relaxed">
+                  {feature.description}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-24 bg-surface-dark relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">{t('home.testimonials.title')}</h2>
+            <p className="text-gray-400">{t('home.testimonials.subtitle')}</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                quote: "MI7 Daemon drastically reduced our server costs by optimizing resource usage. It's a game changer.",
+                author: "Alex Johnson",
+                role: "DevOps Lead, TechCorp",
+                rating: 5
+              },
+              {
+                quote: "The stability and security features give us peace of mind for our mission-critical financial services.",
+                author: "Maria Garcia",
+                role: "CTO, FinSecure",
+                rating: 5
+              },
+              {
+                quote: "Configuration hot reloading saved us countless hours of downtime during deployments.",
+                author: "David Smith",
+                role: "SRE, CloudScale",
+                rating: 5
+              }
+            ].map((testimonial, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="bg-background p-8 rounded-2xl border border-white/5"
+              >
+                <div className="flex space-x-1 mb-6">
+                  {[...Array(testimonial.rating)].map((_, i) => (
+                    <Star key={i} className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                  ))}
+                </div>
+                <p className="text-gray-300 mb-6 italic">"{testimonial.quote}"</p>
+                <div className="flex items-center">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent-cyan to-accent-pink flex items-center justify-center text-black font-bold">
+                    {testimonial.author.charAt(0)}
+                  </div>
+                  <div className="ml-4">
+                    <div className="font-bold text-white">{testimonial.author}</div>
+                    <div className="text-sm text-gray-500">{testimonial.role}</div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-24 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-end to-primary-start" />
+        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20" />
+        <div className="container mx-auto px-6 relative z-10 text-center">
+          <h2 className="text-4xl md:text-5xl font-display font-bold mb-8">{t('home.cta.title')}</h2>
+          <p className="text-xl text-gray-300 mb-10 max-w-2xl mx-auto">
+            {t('home.cta.subtitle')}
+          </p>
+          <Link
+            to="/contact"
+            className="inline-block px-10 py-5 bg-white text-primary-end font-bold text-lg rounded-lg hover:bg-gray-100 transition-colors shadow-lg shadow-white/10"
+          >
+            {t('home.cta.button')}
+          </Link>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default Home;

@@ -1,0 +1,120 @@
+{
+  "nav": {
+    "home": "Home",
+    "features": "Features",
+    "about": "About",
+    "contact": "Contact",
+    "getStarted": "Get Started"
+  },
+  "home": {
+    "versionBadge": "v1.0 is now available for Enterprise",
+    "heroTitle": "Next Gen <1>Daemon</1><br />Management System",
+    "heroSubtitle": "High-performance, secure, and reliable process management for modern Linux infrastructure. Built with Rust for zero-overhead efficiency.",
+    "getStarted": "Get Started",
+    "viewFeatures": "View Features",
+    "features": {
+        "highPerformance": {
+            "title": "High Performance",
+            "description": "Built with Rust to ensure minimal resource footprint and maximum throughput."
+        },
+        "secure": {
+            "title": "Secure by Design",
+            "description": "Memory safety guarantees and strict permission handling for enterprise-grade security."
+        },
+        "monitoring": {
+            "title": "Real-time Monitoring",
+            "description": "Instant visibility into your process status with detailed metrics and logs."
+        }
+    },
+    "testimonials": {
+        "title": "Trusted by Industry Leaders",
+        "subtitle": "See what our customers have to say about MI7 Daemon."
+    },
+    "cta": {
+        "title": "Ready to Upgrade Your Infrastructure?",
+        "subtitle": "Join hundreds of companies that trust MI7 Daemon for their production workloads.",
+        "button": "Start Your Free Trial"
+    }
+  },
+  "features": {
+    "title": "Engineered for <1>Scale</1>",
+    "subtitle": "Discover why leading engineering teams are switching to MI7 for their mission-critical workloads.",
+    "list": {
+        "multiProcess": {
+            "title": "Multi-Process Management",
+            "description": "Manage complex microservices architectures with ease. Define dependencies, startup order, and resource limits in a single configuration file."
+        },
+        "performance": {
+            "title": "Unmatched Performance",
+            "description": "Written in Rust, MI7 Daemon incurs near-zero overhead. Compare our resource usage against standard process managers."
+        },
+        "hotReload": {
+            "title": "Configuration Hot Reload",
+            "description": "Update your process configuration without downtime. MI7 detects file changes and applies updates seamlessly."
+        },
+        "autoRestart": {
+            "title": "Smart Auto-Restart",
+            "description": "Intelligent crash detection and backoff strategies ensure your services stay up, even when things go wrong."
+        }
+    }
+  },
+  "about": {
+    "hero": {
+        "title": "Building the Future of <1>Infrastructure</1>",
+        "description": "We are a team of systems engineers and Rust enthusiasts dedicated to building the next generation of infrastructure tools. Our mission is to make daemon management secure, efficient, and accessible.",
+        "stats": {
+            "users": "Enterprise Users",
+            "uptime": "Uptime Guaranteed",
+            "overhead": "Overhead"
+        }
+    },
+    "timeline": {
+        "title": "Our Journey",
+        "milestones": {
+            "inception": { "title": "Inception", "description": "MI7 Soft founded with a vision to revolutionize daemon management." },
+            "alpha": { "title": "Alpha Release", "description": "First public alpha released to a closed group of 50 beta testers." },
+            "seriesA": { "title": "Series A Funding", "description": "Secured $5M funding to accelerate development and hiring." },
+            "launch": { "title": "v1.0 Launch", "description": "Official stable release used by 500+ companies worldwide." }
+        }
+    },
+    "team": {
+        "title": "Meet the Team",
+        "members": {
+            "sarah": { "role": "CTO & Co-Founder", "bio": "Rust core contributor with 15 years in systems programming." },
+            "james": { "role": "Lead Engineer", "bio": "Former Kernel developer, passionate about zero-cost abstractions." },
+            "elena": { "role": "Product Manager", "bio": "Bridging the gap between complex tech and user experience." },
+            "david": { "role": "DevOps Specialist", "bio": "Expert in containerization and orchestration at scale." }
+        }
+    }
+  },
+  "contact": {
+    "title": "Get in Touch",
+    "subtitle": "Have questions about MI7 Daemon? Our team is here to help you optimize your infrastructure.",
+    "info": {
+        "title": "Contact Information",
+        "headquarters": "Headquarters",
+        "email": "Email",
+        "phone": "Phone"
+    },
+    "form": {
+        "name": "Name",
+        "namePlaceholder": "Your Name",
+        "email": "Email",
+        "emailPlaceholder": "your@email.com",
+        "subject": "Subject",
+        "subjectPlaceholder": "Select a topic",
+        "subjects": {
+            "sales": "Sales Inquiry",
+            "support": "Technical Support",
+            "partnership": "Partnership",
+            "other": "Other"
+        },
+        "message": "Message",
+        "messagePlaceholder": "How can we help you?",
+        "send": "Send Message",
+        "sending": "Sending...",
+        "success": "Message sent successfully! We'll get back to you soon.",
+        "error": "Failed to send message. Please try again later."
+    }
+  }
+}
