@@ -40,6 +40,9 @@ jobs:
         working-directory: web
         run: pnpm build
 
+      - name: Disable Jekyll
+        run: touch web/dist/.nojekyll
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
