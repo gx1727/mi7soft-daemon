@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is a hybrid Rust + React/TypeScript project consisting of:
+Hybrid Rust + React/TypeScript project:
 - **Backend**: Rust daemon process manager (`src/*.rs`)
 - **Frontend**: React + TypeScript + Vite + TailwindCSS (`web/`)
 
@@ -73,14 +73,12 @@ pnpm preview
 ### Rust Backend
 
 **Formatting:**
-- 4-space indentation
-- Use `rustfmt.toml` defaults (run `cargo fmt` before committing)
+- 4-space indentation, `cargo fmt` before committing
 - Max line length: 100 characters
 
 **Naming Conventions:**
 - Types: `PascalCase` (e.g., `DaemonError`, `ProcessConfig`)
-- Functions: `snake_case` (e.g., `run_daemon`, `stop_process`)
-- Variables: `snake_case` (e.g., `config_path`, `pid_file`)
+- Functions/Variables: `snake_case` (e.g., `run_daemon`, `config_path`)
 - Constants: `SCREAMING_SNAKE_CASE`
 
 **Imports:**
@@ -89,44 +87,19 @@ pnpm preview
 
 **Error Handling:**
 - Use `thiserror` for custom error types (see `src/error.rs`)
-- Always return `Result<T, DaemonError>` for fallible functions
-- Use `?` operator for propagation
-- Include context in error messages
-
-**Code Example:**
-```rust
-use std::path::PathBuf;
-use thiserror::Error;
-
-#[derive(Debug, Error)]
-pub enum DaemonError {
-    #[error("Configuration error: {0}")]
-    Config(String),
-    
-    #[error("Process '{name}' is already running (PID: {pid})")]
-    AlreadyRunning { name: String, pid: u32 },
-}
-
-impl DaemonError {
-    pub fn exit_code(&self) -> i32 {
-        match self {
-            DaemonError::Config(_) => 78,
-            DaemonError::AlreadyRunning { .. } => 1,
-        }
-    }
-}
-```
+- Return `Result<T, DaemonError>` for fallible functions
+- Use `?` operator for propagation, include context in messages
 
 **Testing:**
 - Place tests in same file using `#[cfg(test)]` and `#[test]`
-- Follow the pattern in `src/error.rs` and `src/cli.rs`
+- Follow patterns in `src/error.rs` and `src/cli.rs`
 
 ---
 
 ### Frontend (React/TypeScript)
 
 **Formatting:**
-- ESLint + Prettier compatible (run `pnpm lint` before commit)
+- ESLint + Prettier, run `pnpm lint` before commit
 - 2-space indentation in TSX/TS files
 - TailwindCSS for styling
 
@@ -149,38 +122,8 @@ impl DaemonError {
 - Use `react-hook-form` for form handling
 
 **TailwindCSS:**
-- Use custom colors from `tailwind.config.js`:
-  - `background`, `primary`, `accent`, `surface`
+- Custom colors from `tailwind.config.js`: `background`, `primary`, `accent`, `surface`
 - Use `clsx` + `tailwind-merge` (`cn()` utility) for conditional classes
-
-**Code Example:**
-```tsx
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
-}
-
-interface ButtonProps {
-  variant?: 'primary' | 'secondary';
-  className?: string;
-}
-
-export function Button({ variant = 'primary', className }: ButtonProps) {
-  return (
-    <button
-      className={cn(
-        'px-4 py-2 rounded',
-        variant === 'primary' && 'bg-blue-600 text-white',
-        className
-      )}
-    >
-      Click me
-    </button>
-  );
-}
-```
 
 **i18n:**
 - Use `i18next` with `react-i18next`
@@ -208,15 +151,13 @@ mi7soft-daemon/
 │   ├── tsconfig.json      # TypeScript config
 │   ├── eslint.config.js   # ESLint config
 │   ├── tailwind.config.js # Tailwind config
-│   ├── vite.config.ts     # Vite config
 │   └── src/
 │       ├── App.tsx        # Root component
 │       ├── components/    # React components
 │       ├── pages/         # Page components
 │       ├── hooks/         # Custom hooks
 │       ├── lib/           # Utilities & stores
-│       ├── locales/       # i18n translations
-│       └── i18n/          # i18n config
+│       └── locales/       # i18n translations
 ```
 
 ---
@@ -242,4 +183,4 @@ mi7soft-daemon/
 
 - **Windows:** Daemon mode not supported (falls back to error)
 - **PID files:** Unix: `/var/run/mi7soft-daemon.pid`, Windows: `mi7soft-daemon.pid`
-- **Config path:** Defaults to `~/.config/mi7soft-daemon/daemon.toml`
+- **Config path:** Defaults to `~/.config/mi7soft-daemon/daemon.toml` or current directory `daemon.toml`
