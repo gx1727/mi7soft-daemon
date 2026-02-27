@@ -1,9 +1,12 @@
 use crate::config::ProcessConfig;
 use crate::error::DaemonError;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::process::Child;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessEntry {
     pub name: String,
     pub pid: u32,
@@ -34,7 +37,7 @@ pub struct ProcessStatus {
     pub memory: Option<u64>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ProcessState { Running, Stopped, Dead, Unknown }
 pub struct ProcessManager {
     registry: HashMap<String, Vec<ProcessEntry>>,
@@ -43,6 +46,55 @@ pub struct ProcessManager {
 impl ProcessManager {
     pub fn new() -> Self {
         Self { registry: HashMap::new() }
+    }
+
+    /// Load state from file and verify processes are still alive
+    pub fn load_state(&mut self, state_file: &Path) -> Result<(), DaemonError> {
+        if !state_file.exists() {
+            return Ok(());
+        }
+
+        let content = std::fs::read_to_string(state_file)
+            .map_err(|e| DaemonError::Config(format!("Failed to read state file: {}", e)))?;
+
+        let data: HashMap<String, Vec<ProcessEntry>> = serde_json::from_str(&content)
+            .map_err(|e| DaemonError::Config(format!("Failed to parse state file: {}", e)))?;
+
+        // Verify each process is still alive, keep only live ones
+        let mut loaded_count = 0;
+        for (name, entries) in data {
+            let live_entries: Vec<ProcessEntry> = entries
+                .into_iter()
+                .filter(|e| self.is_process_alive(e.pid))
+                .collect();
+            
+            if !live_entries.is_empty() {
+                self.registry.insert(name, live_entries);
+                loaded_count += 1;
+            }
+        }
+
+        eprintln!("Loaded {} processes from state file", loaded_count);
+        Ok(())
+    }
+
+    /// Save state to file
+    pub fn save_state(&self, state_file: &Path) -> Result<(), DaemonError> {
+        // Convert registry to serializable format
+        let data: HashMap<String, Vec<ProcessEntry>> = self.registry.clone();
+        
+        let content = serde_json::to_string_pretty(&data)
+            .map_err(|e| DaemonError::Config(format!("Failed to serialize state: {}", e)))?;
+
+        // Create parent directory if needed
+        if let Some(parent) = state_file.parent() {
+            std::fs::create_dir_all(parent).ok();
+        }
+
+        std::fs::write(state_file, content)
+            .map_err(|e| DaemonError::Config(format!("Failed to write state file: {}", e)))?;
+
+        Ok(())
     }
 
     pub async fn spawn(&mut self, config: &ProcessConfig) -> Result<u32, DaemonError> {
@@ -176,7 +228,7 @@ impl ProcessManager {
         self.registry.keys().cloned().collect()
     }
 
-    fn is_process_alive(&self, pid: u32) -> bool {
+    pub fn is_process_alive(&self, pid: u32) -> bool {
         #[cfg(unix)]
         {
             use nix::sys::signal::{kill, Signal};

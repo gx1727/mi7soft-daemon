@@ -363,6 +363,7 @@ dependencies = [
  "dirs",
  "nix",
  "serde",
+ "serde_json",
  "signal-hook",
  "signal-hook-tokio",
  "sysinfo",

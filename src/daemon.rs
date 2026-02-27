@@ -8,6 +8,7 @@ use tokio::sync::mpsc;
 
 pub struct Daemon {
     config_path: PathBuf,
+    state_file: PathBuf,
     config: DaemonConfig,
     process_manager: ProcessManager,
     pid_file: PidFile,
@@ -18,7 +19,14 @@ pub struct Daemon {
 impl Daemon {
     pub fn new(config_path: PathBuf, pid_file_path: &str) -> Result<Self, DaemonError> {
         let config = load_config(&config_path)?;
-        let process_manager = ProcessManager::new();
+        let mut process_manager = ProcessManager::new();
+        
+        // Derive state file path from pid_file_path
+        let state_file = PathBuf::from(pid_file_path).with_extension("state");
+        
+        // Load existing state and verify processes
+        process_manager.load_state(&state_file)?;
+        
         let mut pid_file = PidFile::new(pid_file_path);
         
         #[cfg(unix)]
@@ -29,6 +37,7 @@ impl Daemon {
         
         Ok(Self {
             config_path,
+            state_file,
             config,
             process_manager,
             pid_file,
@@ -37,7 +46,13 @@ impl Daemon {
         })
     }
     pub async fn run(&mut self) -> Result<(), DaemonError> {
-        self.start_processes().await?;
+        // If no processes loaded from state, spawn configured ones
+        if self.process_manager.process_names().is_empty() {
+            self.start_processes().await?;
+        }
+        
+        // Save initial state
+        self.process_manager.save_state(&self.state_file)?;
         
         let (shutdown_tx, mut shutdown_rx) = mpsc::unbounded_channel();
         self.shutdown_tx = Some(shutdown_tx);
@@ -62,7 +77,7 @@ impl Daemon {
                             return Ok(());
                         }
                         Signal::ReloadConfig => {
-                            self.reload_config()?;
+                            self.reload_config().await?;
                         }
                         _ => {}
                     }
@@ -76,8 +91,14 @@ impl Daemon {
     }
     
     async fn start_processes(&mut self) -> Result<(), DaemonError> {
+        eprintln!("DEBUG: Starting {} processes...", self.config.processes.len());
         for process_config in &self.config.processes {
-            let _ = self.process_manager.spawn(process_config).await;
+            eprintln!("DEBUG: Spawning: {} -> {} {:?}", 
+                process_config.name, process_config.command, process_config.args);
+            match self.process_manager.spawn(process_config).await {
+                Ok(pid) => eprintln!("DEBUG: Started {} with PID {}", process_config.name, pid),
+                Err(e) => eprintln!("DEBUG: Failed to start {}: {}", process_config.name, e),
+            }
         }
         Ok(())
     }
@@ -93,36 +114,55 @@ impl Daemon {
                 }
             }
         }
+        
+        // Save state after monitoring
+        self.process_manager.save_state(&self.state_file)?;
+        
         Ok(())
     }
     async fn shutdown(&mut self) -> Result<(), DaemonError> {
         eprintln!("Shutting down daemon...");
         
-        let names = self.process_manager.process_names();
-        for name in names {
-            eprintln!("Stopping process: {}", name);
-            let _ = self.process_manager.stop(&name).await;
-        }
+        // Save state (don't kill processes - let them run independently)
+        self.process_manager.save_state(&self.state_file)?;
         
         self.pid_file.release_lock()?;
         
         Ok(())
     }
     
-    fn reload_config(&mut self) -> Result<(), DaemonError> {
+    async fn reload_config(&mut self) -> Result<(), DaemonError> {
         eprintln!("Reloading configuration...");
         
         let new_config = load_config(&self.config_path)?;
         
-        for new_proc in &new_config.processes {
-            if !self.config.processes.iter().any(|p| p.name == new_proc.name) {
-                eprintln!("Adding new process: {}", new_proc.name);
+        let old_names: Vec<String> = self.config.processes.iter().map(|p| p.name.clone()).collect();
+        let new_names: Vec<String> = new_config.processes.iter().map(|p| p.name.clone()).collect();
+        
+        // Stop removed processes
+        for old_name in &old_names {
+            if !new_names.contains(old_name) {
+                eprintln!("Stopping removed process: {}", old_name);
+                let _ = self.process_manager.stop(old_name).await;
             }
         }
         
-        for old_proc in &self.config.processes {
-            if !new_config.processes.iter().any(|p| p.name == old_proc.name) {
-                eprintln!("Removing process: {}", old_proc.name);
+        // Start new processes
+        for new_proc in &new_config.processes {
+            if !old_names.contains(&new_proc.name) {
+                eprintln!("Starting new process: {}", new_proc.name);
+                let _ = self.process_manager.spawn(new_proc).await;
+            }
+        }
+        
+        // Restart changed processes (command or args changed)
+        for new_proc in &new_config.processes {
+            if let Some(old_proc) = self.config.processes.iter().find(|p| p.name == new_proc.name) {
+                if old_proc.command != new_proc.command || old_proc.args != new_proc.args {
+                    eprintln!("Restarting changed process: {}", new_proc.name);
+                    let _ = self.process_manager.stop(&new_proc.name).await;
+                    let _ = self.process_manager.spawn(new_proc).await;
+                }
             }
         }
         

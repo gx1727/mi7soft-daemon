@@ -63,12 +63,38 @@ pub enum Commands {
 
 impl Cli {
     pub fn get_config_path(&self) -> PathBuf {
-        self.config.as_ref().cloned().unwrap_or_else(|| {
-            dirs::config_dir()
-                .unwrap_or_else(|| PathBuf::from("/etc"))
-                .join("mi7soft-daemon")
-                .join("daemon.toml")
-        })
+        // First: check if -c option is provided
+        if let Some(ref config) = self.config {
+            return config.clone();
+        }
+        
+        // Second: check current directory for daemon.toml
+        let current_dir = std::env::current_dir()
+            .unwrap_or_else(|_| PathBuf::from("."));
+        let local_config = current_dir.join("daemon.toml");
+        
+        if local_config.exists() {
+            return local_config;
+        }
+        
+        // Third: create default config in current directory if not exists
+        let default_config = r#"# mi7soft-daemon configuration
+# Edit this file to manage your processes
+
+[daemon]
+check_interval = 5
+
+# Example process - uncomment and modify as needed
+[[processes]]
+name = "example"
+command = "echo"
+args = ["hello"]
+"#;
+        if std::fs::write(&local_config, default_config).is_ok() {
+            eprintln!("Created default config: {}", local_config.display());
+        }
+        
+        local_config
     }
 }
 

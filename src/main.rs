@@ -11,16 +11,53 @@ use cli::{Cli, Commands};
 use daemon::Daemon;
 use error::DaemonError;
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     
-    if let Err(e) = run(&cli).await {
-        eprintln!("Error: {}", e);
-        std::process::exit(e.exit_code());
-    }
+    // Check if we should daemonize (skip if MI7SOFT_NO_DAEMON is set)
+    let should_daemonize = match &cli.command {
+        Commands::Start => cli.daemonize && std::env::var("MI7SOFT_NO_DAEMON").is_err(),
+        _ => false,
+    };
     
+    if should_daemonize {
+        run_daemon_and_exit(&cli)?;
+        Ok(())
+    } else {
+        // Normal async execution
+        let rt = tokio::runtime::Runtime::new()?;
+        rt.block_on(async {
+            if let Err(e) = run(&cli).await {
+                eprintln!("Error: {}", e);
+                std::process::exit(e.exit_code());
+            }
+            Ok::<(), anyhow::Error>(())
+        })
+    }
+}
+
+#[cfg(unix)]
+fn run_daemon_and_exit(cli: &Cli) -> anyhow::Result<()> {
+    let config_path = cli.get_config_path();
+    
+    // Use nohup to daemonize - same effect as manually calling nohup ./mi7soft-daemon start &
+    let child = std::process::Command::new("nohup")
+        .arg(std::env::current_exe()?)
+        .arg("start")
+        .arg("--config")
+        .arg(config_path)
+        .env("MI7SOFT_NO_DAEMON", "1")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()?;
+    
+    println!("Daemon started with PID: {}", child.id());
     Ok(())
+}
+
+#[cfg(not(unix))]
+fn run_daemon_and_exit(_cli: &Cli) -> anyhow::Result<()> {
+    Err(anyhow::anyhow!("Daemon mode not supported on Windows"))
 }
 
 async fn run(cli: &Cli) -> Result<(), DaemonError> {
@@ -34,7 +71,8 @@ async fn run(cli: &Cli) -> Result<(), DaemonError> {
     
     match &cli.command {
         Commands::Start => {
-            run_daemon(config_path, pid_file_path, cli.daemonize).await
+            let mut daemon = Daemon::new(config_path, pid_file_path)?;
+            daemon.run().await
         }
         Commands::StartProcess { name } => {
             start_single_process(config_path, name).await
@@ -52,27 +90,6 @@ async fn run(cli: &Cli) -> Result<(), DaemonError> {
             shutdown_daemon(pid_file_path).await
         }
     }
-}
-
-#[cfg(unix)]
-async fn run_daemon(config_path: std::path::PathBuf, pid_file_path: &str, daemonize: bool) -> Result<(), DaemonError> {
-    if daemonize {
-        use daemonize::Daemonize;
-        let daemon = Daemonize::new()
-            .pid_file(pid_file_path)
-            .stdout(std::fs::File::create("/var/log/mi7soft-daemon.out").unwrap())
-            .stderr(std::fs::File::create("/var/log/mi7soft-daemon.err").unwrap());
-        
-        daemon.start()?;
-    }
-    
-    let mut daemon = Daemon::new(config_path, pid_file_path)?;
-    daemon.run().await
-}
-
-#[cfg(not(unix))]
-async fn run_daemon(_config_path: std::path::PathBuf, _pid_file_path: &str, _daemonize: bool) -> Result<(), DaemonError> {
-    Err(DaemonError::Daemonize("Daemon mode not supported on Windows".to_string()))
 }
 
 async fn start_single_process(config_path: std::path::PathBuf, name: &str) -> Result<(), DaemonError> {
@@ -135,8 +152,6 @@ async fn show_status(config_path: std::path::PathBuf, pid_file_path: &str, name:
 }
 
 async fn shutdown_daemon(_pid_file_path: &str) -> Result<(), DaemonError> {
-    // In production, this would send a signal to the running daemon
-    // For now, just print a message
     println!("To shutdown the daemon, use: kill $(cat /var/run/mi7soft-daemon.pid)");
     Ok(())
 }
