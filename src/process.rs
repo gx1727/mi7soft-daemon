@@ -74,7 +74,7 @@ impl ProcessManager {
             }
         }
 
-        eprintln!("Loaded {} processes from state file", loaded_count);
+        tracing::info!("Loaded {} processes from state file", loaded_count);
         Ok(())
     }
 

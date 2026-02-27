@@ -46,6 +46,8 @@ impl Daemon {
         })
     }
     pub async fn run(&mut self) -> Result<(), DaemonError> {
+        tracing::info!("Starting daemon");
+        
         // If no processes loaded from state, spawn configured ones
         if self.process_manager.process_names().is_empty() {
             self.start_processes().await?;
@@ -91,13 +93,13 @@ impl Daemon {
     }
     
     async fn start_processes(&mut self) -> Result<(), DaemonError> {
-        eprintln!("DEBUG: Starting {} processes...", self.config.processes.len());
+        tracing::debug!("Starting {} processes...", self.config.processes.len());
         for process_config in &self.config.processes {
-            eprintln!("DEBUG: Spawning: {} -> {} {:?}", 
+            tracing::debug!("Spawning: {} -> {} {:?}", 
                 process_config.name, process_config.command, process_config.args);
             match self.process_manager.spawn(process_config).await {
-                Ok(pid) => eprintln!("DEBUG: Started {} with PID {}", process_config.name, pid),
-                Err(e) => eprintln!("DEBUG: Failed to start {}: {}", process_config.name, e),
+                Ok(pid) => tracing::info!("Started {} with PID {}", process_config.name, pid),
+                Err(e) => tracing::error!(name = %process_config.name, "Failed to start: {}", e),
             }
         }
         Ok(())
@@ -109,7 +111,7 @@ impl Daemon {
         for name in dead_names {
             if let Some(config) = self.find_config(&name) {
                 if config.auto_restart {
-                    eprintln!("Auto-restarting process: {}", name);
+                    tracing::info!("Auto-restarting process: {}", name);
                     let _ = self.process_manager.spawn(&config).await;
                 }
             }
@@ -121,7 +123,7 @@ impl Daemon {
         Ok(())
     }
     async fn shutdown(&mut self) -> Result<(), DaemonError> {
-        eprintln!("Shutting down daemon...");
+        tracing::info!("Shutting down daemon...");
         
         // Save state (don't kill processes - let them run independently)
         self.process_manager.save_state(&self.state_file)?;
@@ -132,7 +134,7 @@ impl Daemon {
     }
     
     async fn reload_config(&mut self) -> Result<(), DaemonError> {
-        eprintln!("Reloading configuration...");
+        tracing::info!("Reloading configuration...");
         
         let new_config = load_config(&self.config_path)?;
         
@@ -142,7 +144,7 @@ impl Daemon {
         // Stop removed processes
         for old_name in &old_names {
             if !new_names.contains(old_name) {
-                eprintln!("Stopping removed process: {}", old_name);
+                tracing::info!("Stopping removed process: {}", old_name);
                 let _ = self.process_manager.stop(old_name).await;
             }
         }
@@ -150,7 +152,7 @@ impl Daemon {
         // Start new processes
         for new_proc in &new_config.processes {
             if !old_names.contains(&new_proc.name) {
-                eprintln!("Starting new process: {}", new_proc.name);
+                tracing::info!("Starting new process: {}", new_proc.name);
                 let _ = self.process_manager.spawn(new_proc).await;
             }
         }
@@ -159,7 +161,7 @@ impl Daemon {
         for new_proc in &new_config.processes {
             if let Some(old_proc) = self.config.processes.iter().find(|p| p.name == new_proc.name) {
                 if old_proc.command != new_proc.command || old_proc.args != new_proc.args {
-                    eprintln!("Restarting changed process: {}", new_proc.name);
+                    tracing::info!("Restarting changed process: {}", new_proc.name);
                     let _ = self.process_manager.stop(&new_proc.name).await;
                     let _ = self.process_manager.spawn(new_proc).await;
                 }

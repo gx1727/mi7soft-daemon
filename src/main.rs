@@ -2,6 +2,7 @@ mod cli;
 mod config;
 mod daemon;
 mod error;
+mod logging;
 mod pidfile;
 mod process;
 mod signal;
@@ -10,9 +11,16 @@ use clap::Parser;
 use cli::{Cli, Commands};
 use daemon::Daemon;
 use error::DaemonError;
+use std::path::PathBuf;
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
+    
+    // Initialize logging early
+    let log_file = std::env::var("MI7SOFT_LOG_FILE").ok();
+    if let Err(e) = logging::init_logging(log_file.as_deref(), cli.verbose) {
+        tracing::warn!("Failed to initialize logging: {}", e);
+    }
     
     // Check if we should daemonize (skip if MI7SOFT_NO_DAEMON is set)
     let should_daemonize = match &cli.command {
@@ -28,7 +36,7 @@ fn main() -> anyhow::Result<()> {
         let rt = tokio::runtime::Runtime::new()?;
         rt.block_on(async {
             if let Err(e) = run(&cli).await {
-                eprintln!("Error: {}", e);
+                tracing::error!("Error: {}", e);
                 std::process::exit(e.exit_code());
             }
             Ok::<(), anyhow::Error>(())

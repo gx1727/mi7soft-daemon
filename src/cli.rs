@@ -91,7 +91,7 @@ command = "echo"
 args = ["hello"]
 "#;
         if std::fs::write(&local_config, default_config).is_ok() {
-            eprintln!("Created default config: {}", local_config.display());
+            tracing::info!("Created default config: {}", local_config.display());
         }
         
         local_config
