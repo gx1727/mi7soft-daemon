@@ -6,6 +6,10 @@ authors = ["Your Name <your.email@example.com>"]
 license = "MIT"
 description = "A daemon process manager that keeps your services running"
 
+[[bin]]
+name = "m7d"
+path = "src/main.rs"
+
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 /// Process manager daemon for Linux
 #[derive(Debug, Parser)]
-#[command(name = "mi7soft-daemon")]
+#[command(name = "m7d")]
 #[command(author = "Your Name")]
 #[command(version = "0.1.0")]
 #[command(about = "A daemon process manager that keeps your services running", long_about = None)]
