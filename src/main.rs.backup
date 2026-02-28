@@ -10,42 +10,17 @@ use clap::Parser;
 use cli::{Cli, Commands};
 use daemon::Daemon;
 use error::DaemonError;
-use tracing::{error, info};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // 初始化日志系统
-    init_tracing();
-    
-    info!("MI7Soft Daemon starting...");
-    
     let cli = Cli::parse();
     
     if let Err(e) = run(&cli).await {
-        error!("Error: {}", e);
         eprintln!("Error: {}", e);
         std::process::exit(e.exit_code());
     }
     
     Ok(())
-}
-
-fn init_tracing() {
-    // 从环境变量读取日志级别，默认为 info
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
-    
-    // 创建格式化层
-    let fmt_layer = tracing_subscriber::fmt::layer()
-        .with_target(false)
-        .with_thread_ids(false);
-    
-    // 初始化订阅者
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(fmt_layer)
-        .init();
 }
 
 async fn run(cli: &Cli) -> Result<(), DaemonError> {
@@ -91,7 +66,6 @@ async fn run_daemon(config_path: std::path::PathBuf, pid_file_path: &str, daemon
         daemon.start()?;
     }
     
-    info!(pid_file = pid_file_path, "Starting daemon");
     let mut daemon = Daemon::new(config_path, pid_file_path)?;
     daemon.run().await
 }
@@ -110,7 +84,6 @@ async fn start_single_process(config_path: std::path::PathBuf, name: &str) -> Re
     
     let mut daemon = Daemon::new(config_path, pid_file_path)?;
     let pid = daemon.start_process(name).await?;
-    info!(process = name, pid = pid, "Process started");
     println!("Started process {} with PID {}", name, pid);
     Ok(())
 }
@@ -118,7 +91,6 @@ async fn start_single_process(config_path: std::path::PathBuf, name: &str) -> Re
 async fn stop_single_process(config_path: std::path::PathBuf, pid_file_path: &str, name: &str) -> Result<(), DaemonError> {
     let mut daemon = Daemon::new(config_path, pid_file_path)?;
     let stopped = daemon.stop_process(name).await?;
-    info!(process = name, instances = stopped.len(), "Process stopped");
     println!("Stopped process {}: {} instance(s)", name, stopped.len());
     for pid in stopped {
         println!("  - PID {}", pid);
@@ -135,7 +107,6 @@ async fn restart_single_process(config_path: std::path::PathBuf, name: &str) -> 
     
     let mut daemon = Daemon::new(config_path, pid_file_path)?;
     let pids = daemon.restart_process(name).await?;
-    info!(process = name, instances = pids.len(), "Process restarted");
     println!("Restarted process {} with {} instance(s)", name, pids.len());
     for pid in pids {
         println!("  - PID {}", pid);
@@ -148,14 +119,12 @@ async fn show_status(config_path: std::path::PathBuf, pid_file_path: &str, name:
     
     if let Some(process_name) = name {
         let statuses = daemon.get_status(process_name)?;
-        info!(process = process_name, "Showing status");
         println!("Status for process {}:", process_name);
         for status in statuses {
             println!("  {}", status);
         }
     } else {
         let all_statuses = daemon.get_all_status();
-        info!("Showing all process status");
         println!("Status for all processes:");
         for status in all_statuses {
             println!("  {}", status);
@@ -166,7 +135,6 @@ async fn show_status(config_path: std::path::PathBuf, pid_file_path: &str, name:
 }
 
 async fn shutdown_daemon(_pid_file_path: &str) -> Result<(), DaemonError> {
-    info!("Shutdown requested");
     // In production, this would send a signal to the running daemon
     // For now, just print a message
     println!("To shutdown the daemon, use: kill $(cat /var/run/mi7soft-daemon.pid)");

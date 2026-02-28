@@ -1,0 +1,100 @@
+// 在 main.rs 中添加 history 命令处理
+// 需要在 match &cli.command 中添加：
+
+/*
+use crate::storage::Storage;
+use std::path::PathBuf;
+
+// 在 main 函数开头创建存储
+let db_path = dirs::data_dir()
+    .unwrap_or_else(|| PathBuf::from("."))
+    .join("mi7soft-daemon")
+    .join("daemon.db");
+let storage = Storage::new(db_path)?;
+
+// 在 match &cli.command 中添加：
+Commands::History { name, number } => {
+    show_history(config_path, name, number, &storage).await
+}
+
+// 添加新函数
+async fn show_history(
+    config_path: PathBuf,
+    name: &str,
+    number: &usize,
+    storage: &Storage,
+) -> Result<(), DaemonError> {
+    let history = storage.get_history(name, *number)?;
+    
+    if history.is_empty() {
+        println!("No history found for process: {}", name);
+        return Ok(());
+    }
+    
+    println!("History for process {} (last {} records):", name, number);
+    println!("{:-<80}", "");
+    
+    for record in history {
+        let status = match record.exit_code {
+            Some(0) => "✓ Success",
+            Some(code) => &format!("✗ Failed (code: {})", code),
+            None => "Running...",
+        };
+        
+        let duration = match record.end_time {
+            Some(end) => {
+                let secs = (end - record.start_time).num_seconds();
+                format!("{}s", secs)
+            }
+            None => "N/A".to_string(),
+        };
+        
+        println!(
+            "  PID {:<6} | {:<19} - {:<19} | {:<12} | {}",
+            record.pid,
+            record.start_time.format("%Y-%m-%d %H:%M:%S"),
+            record.end_time
+                .map(|t| t.format("%Y-%m-%d %H:%M:%S").to_string())
+                .unwrap_or_else(|| "Still running".to_string()),
+            duration,
+            status
+        );
+    }
+    
+    Ok(())
+}
+
+async fn show_stats(
+    config_path: PathBuf,
+    name: Option<&str>,
+    storage: &Storage,
+) -> Result<(), DaemonError> {
+    if let Some(process_name) = name {
+        if let Some(stats) = storage.get_stats(process_name)? {
+            println!("Statistics for process {}:", process_name);
+            println!("  Total starts: {}", stats.total_starts);
+            println!("  Total restarts: {}", stats.total_restarts);
+            println!("  Total failures: {}", stats.total_failures);
+            println!("  Avg uptime: {:.1}s", stats.avg_uptime_seconds);
+            if let Some(last_start) = stats.last_start_time {
+                println!("  Last start: {}", last_start.format("%Y-%m-%d %H:%M:%S"));
+            }
+        } else {
+            println!("No statistics found for process: {}", process_name);
+        }
+    } else {
+        let all_stats = storage.get_all_stats()?;
+        println!("Statistics for all processes:");
+        println!("{:-<80}", "");
+        
+        for stats in all_stats {
+            println!("  {}:", stats.name);
+            println!("    Starts: {} | Restarts: {} | Failures: {}",
+                stats.total_starts, stats.total_restarts, stats.total_failures);
+            println!("    Avg uptime: {:.1}s", stats.avg_uptime_seconds);
+        }
+    }
+    
+    Ok(())
+}
+*/

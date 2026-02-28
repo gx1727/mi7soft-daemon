@@ -5,6 +5,7 @@ use crate::pidfile::PidFile;
 use crate::signal::{Signal, SignalHandler};
 use std::path::PathBuf;
 use tokio::sync::mpsc;
+use tracing::{error, info, warn};
 
 pub struct Daemon {
     config_path: PathBuf,
@@ -36,6 +37,7 @@ impl Daemon {
             shutdown_tx: None,
         })
     }
+    
     pub async fn run(&mut self) -> Result<(), DaemonError> {
         self.start_processes().await?;
         
@@ -45,6 +47,8 @@ impl Daemon {
         let check_interval = self.config.daemon.as_ref()
             .map(|d| d.check_interval)
             .unwrap_or(5);
+        
+        info!(check_interval = check_interval, "Daemon started, monitoring processes");
         
         let mut interval = tokio::time::interval(
             tokio::time::Duration::from_secs(check_interval)
@@ -58,16 +62,19 @@ impl Daemon {
                 Some(signal) = self.signal_handler.recv() => {
                     match signal {
                         Signal::Shutdown => {
+                            info!("Received shutdown signal");
                             self.shutdown().await?;
                             return Ok(());
                         }
                         Signal::ReloadConfig => {
+                            info!("Received reload config signal");
                             self.reload_config()?;
                         }
                         _ => {}
                     }
                 }
                 _ = shutdown_rx.recv() => {
+                    info!("Received shutdown request");
                     self.shutdown().await?;
                     return Ok(());
                 }
@@ -77,7 +84,13 @@ impl Daemon {
     
     async fn start_processes(&mut self) -> Result<(), DaemonError> {
         for process_config in &self.config.processes {
-            let _ = self.process_manager.spawn(process_config).await;
+            if let Err(e) = self.process_manager.spawn(process_config).await {
+                error!(
+                    process = process_config.name.as_str(),
+                    error = %e,
+                    "Failed to start process"
+                );
+            }
         }
         Ok(())
     }
@@ -88,45 +101,60 @@ impl Daemon {
         for name in dead_names {
             if let Some(config) = self.find_config(&name) {
                 if config.auto_restart {
-                    eprintln!("Auto-restarting process: {}", name);
-                    let _ = self.process_manager.spawn(&config).await;
+                    warn!(process = name.as_str(), "Auto-restarting dead process");
+                    if let Err(e) = self.process_manager.spawn(&config).await {
+                        error!(
+                            process = name.as_str(),
+                            error = %e,
+                            "Failed to restart process"
+                        );
+                    }
                 }
             }
         }
         Ok(())
     }
+    
     async fn shutdown(&mut self) -> Result<(), DaemonError> {
-        eprintln!("Shutting down daemon...");
+        info!("Shutting down daemon...");
         
         let names = self.process_manager.process_names();
         for name in names {
-            eprintln!("Stopping process: {}", name);
-            let _ = self.process_manager.stop(&name).await;
+            info!(process = name.as_str(), "Stopping process");
+            if let Err(e) = self.process_manager.stop(&name).await {
+                error!(
+                    process = name.as_str(),
+                    error = %e,
+                    "Failed to stop process"
+                );
+            }
         }
         
         self.pid_file.release_lock()?;
         
+        info!("Daemon shutdown complete");
         Ok(())
     }
     
     fn reload_config(&mut self) -> Result<(), DaemonError> {
-        eprintln!("Reloading configuration...");
+        info!("Reloading configuration...");
         
         let new_config = load_config(&self.config_path)?;
         
         for new_proc in &new_config.processes {
             if !self.config.processes.iter().any(|p| p.name == new_proc.name) {
-                eprintln!("Adding new process: {}", new_proc.name);
+                info!(process = new_proc.name.as_str(), "Adding new process");
             }
         }
         
         for old_proc in &self.config.processes {
             if !new_config.processes.iter().any(|p| p.name == old_proc.name) {
-                eprintln!("Removing process: {}", old_proc.name);
+                info!(process = old_proc.name.as_str(), "Removing process");
             }
         }
         
         self.config = new_config;
+        info!("Configuration reloaded");
         Ok(())
     }
     

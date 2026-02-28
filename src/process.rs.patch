@@ -1,0 +1,51 @@
+// 在 ProcessManager::spawn 方法中添加输出捕获
+// 需要添加的代码片段：
+
+/*
+use crate::process_output::{OutputCapture, LogStream};
+
+impl ProcessManager {
+    pub async fn spawn(&mut self, config: &ProcessConfig) -> Result<u32, DaemonError> {
+        // ... 现有代码 ...
+        
+        let mut cmd = tokio::process::Command::new(&config.command);
+        cmd.args(&config.args);
+        
+        // 捕获输出（如果配置了）
+        if config.capture_output {
+            cmd.stdout(std::process::Stdio::piped());
+            cmd.stderr(std::process::Stdio::piped());
+        }
+        
+        let mut child = cmd.spawn()?;
+        let pid = child.id().unwrap() as u32;
+        
+        // 捕获输出
+        if config.capture_output {
+            let log_file = config.log_file.clone()
+                .unwrap_or_else(|| format!("/var/log/mi7soft-daemon/{}.log", config.name));
+            
+            let (capture, receiver) = OutputCapture::new(
+                config.name.clone(),
+                PathBuf::from(log_file),
+                config.max_log_size,
+            );
+            
+            // 捕获 stdout
+            if let Some(stdout) = child.stdout.take() {
+                capture.capture_stdout(stdout);
+            }
+            
+            // 捕获 stderr
+            if let Some(stderr) = child.stderr.take() {
+                capture.capture_stderr(stderr);
+            }
+            
+            // 启动日志写入器
+            capture.start_writer(receiver);
+        }
+        
+        // ... 其余代码 ...
+    }
+}
+*/

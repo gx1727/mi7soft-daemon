@@ -59,18 +59,6 @@ pub struct ProcessConfig {
     
     #[serde(default)]
     pub max_instances: Option<usize>,
-    
-    /// 是否捕获进程输出（新增）
-    #[serde(default = "default_capture_output")]
-    pub capture_output: bool,
-    
-    /// 最大日志文件大小（字节）（新增）
-    #[serde(default)]
-    pub max_log_size: Option<u64>,
-}
-
-fn default_capture_output() -> bool {
-    true  // 默认捕获输出
 }
 
 /// Load configuration from TOML file
@@ -101,15 +89,6 @@ fn validate_config(config: &DaemonConfig) -> Result<(), DaemonError> {
                 "Duplicate process name: {}", proc.name
             )));
         }
-        
-        // 验证日志文件路径
-        if proc.capture_output && proc.log_file.is_none() {
-            // 如果捕获输出但没有指定日志文件，使用默认路径
-            warn!(
-                process = proc.name.as_str(),
-                "No log file specified, using default path"
-            );
-        }
     }
     
     Ok(())
@@ -135,7 +114,6 @@ command = "/bin/sleep"
 args = ["100"]
 working_directory = "/tmp"
 auto_restart = true
-capture_output = true
 
 [[processes]]
 name = "another-process"
@@ -151,7 +129,6 @@ args = ["hello"]
         assert_eq!(config.processes[1].name, "another-process");
         assert!(config.daemon.is_some());
         assert_eq!(config.daemon.unwrap().check_interval, 10);
-        assert!(config.processes[0].capture_output);
     }
 
     #[test]
