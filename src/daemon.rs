@@ -9,6 +9,7 @@ use tracing::{error, info, warn};
 
 pub struct Daemon {
     config_path: PathBuf,
+    state_file: PathBuf,
     config: DaemonConfig,
     process_manager: ProcessManager,
     pid_file: PidFile,
@@ -19,17 +20,25 @@ pub struct Daemon {
 impl Daemon {
     pub fn new(config_path: PathBuf, pid_file_path: &str) -> Result<Self, DaemonError> {
         let config = load_config(&config_path)?;
-        let process_manager = ProcessManager::new();
+        let mut process_manager = ProcessManager::new();
+        
+        // Derive state file path from pid_file_path
+        let state_file = PathBuf::from(pid_file_path).with_extension("state");
+        
+        // Load existing state and verify processes
+        process_manager.load_state(&state_file)?;
+        
         let mut pid_file = PidFile::new(pid_file_path);
         
         #[cfg(unix)]
         pid_file.acquire_lock()?;
         
         #[cfg(not(unix))]
-        let _ = pid_file.acquire_lock();
+        let _ = pid_file.acquire_lock;
         
         Ok(Self {
             config_path,
+            state_file,
             config,
             process_manager,
             pid_file,
@@ -39,7 +48,15 @@ impl Daemon {
     }
     
     pub async fn run(&mut self) -> Result<(), DaemonError> {
-        self.start_processes().await?;
+        info!("Starting daemon");
+        
+        // If no processes loaded from state, spawn configured ones
+        if self.process_manager.process_names().is_empty() {
+            self.start_processes().await?;
+        }
+        
+        // Save initial state
+        self.process_manager.save_state(&self.state_file)?;
         
         let (shutdown_tx, mut shutdown_rx) = mpsc::unbounded_channel();
         self.shutdown_tx = Some(shutdown_tx);
@@ -58,6 +75,7 @@ impl Daemon {
             tokio::select! {
                 _ = interval.tick() => {
                     self.monitor_and_restart().await?;
+                    self.process_manager.save_state(&self.state_file)?;
                 }
                 Some(signal) = self.signal_handler.recv() => {
                     match signal {
@@ -130,6 +148,9 @@ impl Daemon {
             }
         }
         
+        // Save final state
+        self.process_manager.save_state(&self.state_file)?;
+        
         self.pid_file.release_lock()?;
         
         info!("Daemon shutdown complete");
@@ -170,19 +191,25 @@ impl Daemon {
     
     pub async fn start_process(&mut self, name: &str) -> Result<u32, DaemonError> {
         if let Some(config) = self.find_config(name) {
-            self.process_manager.spawn(&config).await
+            let pid = self.process_manager.spawn(&config).await?;
+            self.process_manager.save_state(&self.state_file)?;
+            Ok(pid)
         } else {
             Err(DaemonError::Config(format!("Process '{}' not found in config", name)))
         }
     }
     
     pub async fn stop_process(&mut self, name: &str) -> Result<Vec<u32>, DaemonError> {
-        self.process_manager.stop(name).await
+        let pids = self.process_manager.stop(name).await?;
+        self.process_manager.save_state(&self.state_file)?;
+        Ok(pids)
     }
     
     pub async fn restart_process(&mut self, name: &str) -> Result<Vec<u32>, DaemonError> {
         if let Some(config) = self.find_config(name) {
-            self.process_manager.restart(&config).await
+            let pids = self.process_manager.restart(&config).await?;
+            self.process_manager.save_state(&self.state_file)?;
+            Ok(pids)
         } else {
             Err(DaemonError::Config(format!("Process '{}' not found in config", name)))
         }

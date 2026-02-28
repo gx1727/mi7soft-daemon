@@ -2,7 +2,8 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "mi7soft-daemon")]
+#[command(name = "m7d")]
+#[command(bin_name = "m7d")]
 #[command(about = "A daemon process manager", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
@@ -15,6 +16,10 @@ pub struct Cli {
     /// Run as daemon (background)
     #[arg(short = 'd', long, global = true)]
     pub daemonize: bool,
+    
+    /// Verbose output (can be used multiple times)
+    #[arg(short, long, global = true, action = clap::ArgAction::Count)]
+    pub verbose: u8,
 }
 
 #[derive(Subcommand)]
@@ -49,7 +54,7 @@ pub enum Commands {
     /// Shutdown the daemon
     Shutdown,
     
-    /// View process logs（新增）
+    /// View process logs
     Logs {
         /// Process name
         name: String,
@@ -67,7 +72,7 @@ pub enum Commands {
         since: Option<i64>,
     },
     
-    /// View process history（新增，为持久化准备）
+    /// View process history
     History {
         /// Process name
         name: String,
