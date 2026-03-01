@@ -118,6 +118,10 @@ impl ProcessManager {
             cmd.env(k, v);
         }
         
+        // 🔧 设置进程组：让子进程成为新进程组的 leader (PGID = PID)
+        // 这样 kill(-(pid as i32)) 就能杀死整个进程组（包括所有 Swoole 子进程）
+        cmd.process_group(0);
+        
         let child = cmd.spawn().map_err(|e| DaemonError::StartFailed {
             name: config.name.clone(),
             reason: format!("Failed: {}", e),
@@ -153,12 +157,18 @@ impl ProcessManager {
             use nix::unistd::Pid;
             use std::time::Duration;
             
-            let _ = signal::kill(Pid::from_raw(pid as i32), Signal::SIGTERM);
+            // 🔧 杀死整个进程组：使用负数 PID 表示 PGID
+            // 这样会同时杀死 Master + Worker + TaskWorker + Manager 所有进程
+            let pgid = Pid::from_raw(-(pid as i32));
+            let _ = signal::kill(pgid, Signal::SIGTERM);
+            
             for _ in 0..50 {
                 tokio::time::sleep(Duration::from_millis(100)).await;
                 if !self.is_process_alive(pid) { return Ok(pid); }
             }
-            signal::kill(Pid::from_raw(pid as i32), Signal::SIGKILL)
+            
+            // 强制杀死整个进程组
+            signal::kill(pgid, Signal::SIGKILL)
                 .map_err(|e| DaemonError::StopFailed {
                     name: format!("PID {}", pid),
                     reason: format!("SIGKILL failed: {}", e),
