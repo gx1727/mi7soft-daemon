@@ -2,119 +2,81 @@
   "nav": {
     "home": "首页",
     "features": "特性",
-    "about": "关于我们",
+    "docs": "文档",
+    "about": "关于",
     "contact": "联系我们",
     "getStarted": "开始使用"
   },
   "home": {
-    "versionBadge": "v1.0 企业版现已发布",
+    "versionBadge": "v0.1.2 发布 - 进程组管理 & 更多新功能",
     "heroTitle": "下一代 <1>守护进程</1><br />管理系统",
-    "heroSubtitle": "专为现代 Linux 基础设施打造的高性能、安全、可靠的进程管理系统。基于 Rust 构建，实现零开销效率。",
-    "getStarted": "开始使用",
+    "heroSubtitle": "专为现代 Linux 基础设施打造的高性能、安全、可靠的进程管理系统。基于 Rust 构建，实现零开销效率。完美支持 Swoole、Hyperf 和微服务架构。",
+    "getStarted": "立即下载",
     "viewFeatures": "查看特性",
+    "viewDocs": "阅读文档",
+    "download": {
+      "github": "GitHub 发布页",
+      "latest": "最新版本",
+      "binary": "二进制文件 (Linux x64)"
+    },
     "features": {
-        "highPerformance": {
-            "title": "高性能",
-            "description": "基于 Rust 构建，确保最小的资源占用和最大的吞吐量。"
-        },
-        "secure": {
-            "title": "安全设计",
-            "description": "内存安全保证和严格的企业级安全权限管理。"
-        },
-        "monitoring": {
-            "title": "实时监控",
-            "description": "通过详细的指标和日志即时查看进程状态。"
-        }
+      "highPerformance": {
+        "title": "高性能",
+        "description": "基于 Rust 构建，确保最小的资源占用和最大的吞吐量。二进制文件仅 6MB。"
+      },
+      "secure": {
+        "title": "进程组管理",
+        "description": "智能进程组处理，防止孤儿进程。完美解决 Swoole/Hyperf 重启场景的问题。"
+      },
+      "monitoring": {
+        "title": "结构化日志",
+        "description": "先进的日志系统，支持输出捕获、实时跟踪和历史查询。"
+      }
     },
     "testimonials": {
-        "title": "行业领袖信赖",
-        "subtitle": "看看我们的客户如何评价 MI7 Daemon。"
+      "title": "开发者信赖",
+      "subtitle": "看看开发者们如何评价 mi7soft-daemon。"
     },
     "cta": {
-        "title": "准备好升级您的基础设施了吗？",
-        "subtitle": "加入数百家信赖 MI7 Daemon 处理生产负载的企业。",
-        "button": "开始免费试用"
+      "title": "准备好管理您的进程了吗？",
+      "subtitle": "加入使用 mi7soft-daemon 管理 Swoole、Hyperf 和微服务的开发者行列。",
+      "button": "前往 GitHub"
     }
   },
   "features": {
-    "title": "专为 <1>规模化</1> 设计",
-    "subtitle": "探索为什么领先的工程团队转向 MI7 来处理关键任务负载。",
+    "title": "专为 <1>可靠性</1> 设计",
+    "subtitle": "探索为什么开发者选择 mi7soft-daemon 来管理 Swoole、Hyperf 和微服务。",
     "list": {
-        "multiProcess": {
-            "title": "多进程管理",
-            "description": "轻松管理复杂的微服务架构。在单个配置文件中定义依赖关系、启动顺序和资源限制。"
-        },
-        "performance": {
-            "title": "无与伦比的性能",
-            "description": "使用 Rust 编写，MI7 Daemon 几乎零开销。对比我们的资源使用情况与标准进程管理器。"
-        },
-        "hotReload": {
-            "title": "配置热重载",
-            "description": "无需停机即可更新进程配置。MI7 检测文件更改并无缝应用更新。"
-        },
-        "autoRestart": {
-            "title": "智能自动重启",
-            "description": "智能崩溃检测和退避策略确保您的服务保持运行，即使出现问题也是如此。"
-        }
-    }
-  },
-  "about": {
-    "hero": {
-        "title": "构建 <1>基础设施</1> 的未来",
-        "description": "我们是一支由系统工程师和 Rust 爱好者组成的团队，致力于构建下一代基础设施工具。我们的使命是让守护进程管理变得安全、高效且易于访问。",
-        "stats": {
-            "users": "企业用户",
-            "uptime": "正常运行时间保证",
-            "overhead": "开销"
-        }
-    },
-    "timeline": {
-        "title": "我们的历程",
-        "milestones": {
-            "inception": { "title": "创立", "description": "MI7 Soft 成立，愿景是彻底改变守护进程管理。" },
-            "alpha": { "title": "Alpha 发布", "description": "向 50 名 beta 测试人员组成的封闭小组发布了首个公开 Alpha 版本。" },
-            "seriesA": { "title": "A 轮融资", "description": "获得 500 万美元融资以加速开发和招聘。" },
-            "launch": { "title": "v1.0 发布", "description": "被全球 500 多家公司使用的官方稳定版本。" }
-        }
-    },
-    "team": {
-        "title": "认识团队",
-        "members": {
-            "sarah": { "role": "CTO & 联合创始人", "bio": "Rust 核心贡献者，拥有 15 年系统编程经验。" },
-            "james": { "role": "首席工程师", "bio": "前内核开发人员，热衷于零成本抽象。" },
-            "elena": { "role": "产品经理", "bio": "弥合复杂技术与用户体验之间的差距。" },
-            "david": { "role": "DevOps 专家", "bio": "大规模容器化和编排方面的专家。" }
-        }
-    }
-  },
-  "contact": {
-    "title": "联系我们",
-    "subtitle": "对 MI7 Daemon 有疑问？我们的团队在这里帮助您优化基础设施。",
-    "info": {
-        "title": "联系信息",
-        "headquarters": "总部",
-        "email": "电子邮件",
-        "phone": "电话"
-    },
-    "form": {
-        "name": "姓名",
-        "namePlaceholder": "您的姓名",
-        "email": "电子邮件",
-        "emailPlaceholder": "your@email.com",
-        "subject": "主题",
-        "subjectPlaceholder": "选择一个主题",
-        "subjects": {
-            "sales": "销售咨询",
-            "support": "技术支持",
-            "partnership": "合作伙伴关系",
-            "other": "其他"
-        },
-        "message": "留言",
-        "messagePlaceholder": "我们能为您做什么？",
-        "send": "发送留言",
-        "sending": "发送中...",
-        "success": "留言发送成功！我们会尽快回复您。",
-        "error": "发送留言失败。请稍后再试。"
+      "multiProcess": {
+        "title": "多进程管理",
+        "description": "轻松管理 Swoole 等复杂多进程服务。自动进程组（PGID）管理，防止重启时产生孤儿进程。",
+        "benefits": ["防止孤儿进程", "优雅重启支持", "端口冲突解决", "Master/Worker 管理"]
+      },
+      "performance": {
+        "title": "轻量且快速",
+        "description": "使用 Rust 编写，几乎零开销。二进制文件仅 6MB，内存占用极低。完美适合生产环境部署。",
+        "benefits": ["6MB 二进制大小", "< 10MB 内存占用", "零运行时依赖", "快速启动时间"]
+      },
+      "logging": {
+        "title": "先进的日志系统",
+        "description": "基于 tracing 框架的结构化日志。自动捕获 stdout/stderr，支持实时日志跟踪和历史查询。",
+        "benefits": ["结构化 JSON 日志", "输出捕获 (stdout/stderr)", "实时日志跟踪", "历史查询与过滤"]
+      },
+      "autoRestart": {
+        "title": "智能自动重启",
+        "description": "智能崩溃检测确保您的服务持续运行。可配置的重启策略和指数退避机制。",
+        "benefits": ["自动进程恢复", "可配置重启策略", "状态持久化", "优雅降级"]
+      },
+      "storage": {
+        "title": "持久化存储",
+        "description": "基于 SQLite 的进程历史和统计数据存储。追踪每次启动、停止和重启事件。",
+        "benefits": ["进程历史追踪", "运行时统计", "自动清理", "跨重启状态持久化"]
+      },
+      "config": {
+        "title": "灵活配置",
+        "description": "简单的 TOML 配置文件，支持热重载。无需停机即可更新设置。",
+        "benefits": ["TOML 配置格式", "热重载 (SIGHUP)", "环境变量支持", "工作目录设置"]
+      }
     }
   }
 }
