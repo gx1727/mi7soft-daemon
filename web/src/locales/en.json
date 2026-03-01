@@ -2,81 +2,81 @@
   "nav": {
     "home": "Home",
     "features": "Features",
-    "docs": "Documentation",
     "about": "About",
     "contact": "Contact",
     "getStarted": "Get Started"
   },
   "home": {
-    "versionBadge": "v0.1.2 Released - Process Group Management & More",
-    "heroTitle": "Next Gen <1>Daemon</1><br />Management System",
-    "heroSubtitle": "High-performance, secure, and reliable process management for modern Linux infrastructure. Built with Rust for zero-overhead efficiency. Perfect for Swoole, Hyperf, and microservices.",
-    "getStarted": "Download Now",
+    "versionBadge": "v0.1.2 - Process Group Management & Logging",
+    "heroTitle": "Simple <1>Daemon</1><br />Manager",
+    "heroSubtitle": "A lightweight process management tool for Swoole, Hyperf, and microservices. Built with Rust for reliability and performance.",
+    "getStarted": "Download",
     "viewFeatures": "View Features",
     "viewDocs": "Read Docs",
-    "download": {
-      "github": "GitHub Releases",
-      "latest": "Latest Version",
-      "binary": "Binary (Linux x64)"
-    },
     "features": {
       "highPerformance": {
-        "title": "High Performance",
-        "description": "Built with Rust to ensure minimal resource footprint and maximum throughput. Only 6MB binary size."
+        "title": "Lightweight",
+        "description": "Only 6MB binary with minimal memory footprint. Zero runtime dependencies."
       },
       "secure": {
         "title": "Process Group Management",
-        "description": "Intelligent process group handling prevents orphan processes. Perfect for Swoole/Hyperf restart scenarios."
+        "description": "Intelligent PGID handling prevents orphan processes. Perfect for Swoole/Hyperf."
       },
       "monitoring": {
         "title": "Structured Logging",
-        "description": "Advanced logging system with output capture, real-time tracking, and historical queries."
+        "description": "Advanced logging with output capture, real-time tracking, and historical queries."
       }
-    },
-    "testimonials": {
-      "title": "Trusted by Developers",
-      "subtitle": "See what developers are saying about mi7soft-daemon."
     },
     "cta": {
       "title": "Ready to Manage Your Processes?",
-      "subtitle": "Join developers who trust mi7soft-daemon for their Swoole, Hyperf, and microservices deployments.",
-      "button": "Get Started on GitHub"
+      "subtitle": "Download mi7soft-daemon and simplify your process management workflow.",
+      "button": "View on GitHub"
     }
   },
   "features": {
-    "title": "Engineered for <1>Reliability</1>",
-    "subtitle": "Discover why developers are switching to mi7soft-daemon for Swoole, Hyperf, and microservices management.",
+    "title": "Key <1>Features</1>",
+    "subtitle": "Everything you need for reliable process management.",
     "list": {
       "multiProcess": {
         "title": "Multi-Process Management",
-        "description": "Manage complex multi-process services like Swoole with ease. Automatic process group (PGID) management prevents orphan processes during restart.",
-        "benefits": ["Prevents orphan processes", "Graceful restart support", "Port conflict resolution", "Master/Worker management"]
+        "description": "Manage Swoole and other multi-process services. Automatic PGID handling prevents orphan processes.",
+        "benefits": ["Prevents orphan processes", "Graceful restart", "Port conflict resolution"]
       },
       "performance": {
-        "title": "Lightweight & Fast",
-        "description": "Written in Rust with near-zero overhead. Only 6MB binary with minimal memory footprint. Perfect for production deployments.",
-        "benefits": ["6MB binary size", "< 10MB memory usage", "Zero runtime dependencies", "Fast startup time"]
+        "title": "Lightweight",
+        "description": "6MB binary with minimal resource usage. Perfect for production deployments.",
+        "benefits": ["6MB binary", "<10MB memory", "Zero dependencies"]
       },
       "logging": {
-        "title": "Advanced Logging System",
-        "description": "Structured logging with tracing framework. Automatic stdout/stderr capture, real-time log tracking, and historical queries.",
-        "benefits": ["Structured JSON logs", "Output capture (stdout/stderr)", "Real-time log tracking", "Historical queries with filters"]
+        "title": "Logging System",
+        "description": "Structured logging with stdout/stderr capture and historical queries.",
+        "benefits": ["JSON logs", "Output capture", "Real-time tracking"]
       },
       "autoRestart": {
-        "title": "Smart Auto-Restart",
-        "description": "Intelligent crash detection ensures your services stay up. Configurable restart policies with exponential backoff.",
-        "benefits": ["Automatic process recovery", "Configurable restart policies", "State persistence", "Graceful degradation"]
+        "title": "Auto-Restart",
+        "description": "Automatic crash recovery keeps your services running.",
+        "benefits": ["Auto recovery", "State persistence", "Configurable policies"]
       },
       "storage": {
         "title": "Persistent Storage",
-        "description": "SQLite-based storage for process history and statistics. Track every start, stop, and restart event.",
-        "benefits": ["Process history tracking", "Runtime statistics", "Automatic cleanup", "State persistence across restarts"]
+        "description": "SQLite-based history and statistics tracking.",
+        "benefits": ["History tracking", "Statistics", "Auto cleanup"]
       },
       "config": {
-        "title": "Flexible Configuration",
-        "description": "Simple TOML configuration with hot reload support. Update settings without downtime.",
-        "benefits": ["TOML configuration format", "Hot reload (SIGHUP)", "Environment variables", "Working directory support"]
+        "title": "Simple Config",
+        "description": "TOML configuration with hot reload support.",
+        "benefits": ["TOML format", "Hot reload", "Environment variables"]
       }
     }
+  },
+  "about": {
+    "hero": {
+      "title": "Open Source <1>Project</1>",
+      "description": "mi7soft-daemon is an open-source tool focused on process management for Swoole, Hyperf, and microservices. Built by developers, for developers."
+    }
+  },
+  "contact": {
+    "title": "Get in Touch",
+    "subtitle": "Found a bug? Have a feature request? Let us know!"
   }
 }

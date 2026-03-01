@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Zap, Shield, Activity, Download, BookOpen } from 'lucide-react';
+import { ArrowRight, Zap, Shield, Activity, Star, Download, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation, Trans } from 'react-i18next';
 
@@ -10,6 +10,7 @@ const Home = () => {
     <div className="overflow-hidden">
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-center justify-center bg-gradient-to-b from-primary-start to-primary-end overflow-hidden">
+        {/* Abstract Background Elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-1/2 -left-1/4 w-full h-full bg-accent-cyan/10 blur-[120px] rounded-full animate-pulse-slow" />
           <div className="absolute -bottom-1/2 -right-1/4 w-full h-full bg-accent-pink/10 blur-[120px] rounded-full animate-pulse-slow" />
@@ -78,70 +79,3 @@ const Home = () => {
           </motion.div>
         </div>
       </section>
-
-      {/* Features Section */}
-      <section className="py-24 bg-background">
-        <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            {[
-              {
-                icon: <Zap className="w-10 h-10 text-accent-cyan" />,
-                title: t('home.features.highPerformance.title'),
-                description: t('home.features.highPerformance.description')
-              },
-              {
-                icon: <Shield className="w-10 h-10 text-accent-pink" />,
-                title: t('home.features.secure.title'),
-                description: t('home.features.secure.description')
-              },
-              {
-                icon: <Activity className="w-10 h-10 text-purple-400" />,
-                title: t('home.features.monitoring.title'),
-                description: t('home.features.monitoring.description')
-              }
-            ].map((feature, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="p-8 rounded-2xl bg-surface-card border border-white/5 hover:border-white/10 transition-colors group"
-              >
-                <div className="mb-6 p-4 bg-white/5 rounded-xl inline-block group-hover:bg-white/10 transition-colors">
-                  {feature.icon}
-                </div>
-                <h3 className="text-2xl font-display font-bold mb-4">{feature.title}</h3>
-                <p className="text-gray-400 leading-relaxed">
-                  {feature.description}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-24 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-end to-primary-start" />
-        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20" />
-        <div className="container mx-auto px-6 relative z-10 text-center">
-          <h2 className="text-4xl md:text-5xl font-display font-bold mb-8">{t('home.cta.title')}</h2>
-          <p className="text-xl text-gray-300 mb-10 max-w-2xl mx-auto">
-            {t('home.cta.subtitle')}
-          </p>
-          <a
-            href="https://github.com/gx1727/mi7soft-daemon"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block px-10 py-5 bg-white text-primary-end font-bold text-lg rounded-lg hover:bg-gray-100 transition-colors shadow-lg shadow-white/10"
-          >
-            {t('home.cta.button')}
-          </a>
-        </div>
-      </section>
-    </div>
-  );
-};
-
-export default Home;
