@@ -126,3 +126,10 @@ mod tests {
         assert_eq!(DaemonError::ProcessNotFound.exit_code(), 1);
     }
 }
+
+// 为 rusqlite::Error 实现 From trait
+impl From<rusqlite::Error> for DaemonError {
+    fn from(err: rusqlite::Error) -> Self {
+        DaemonError::Config(format!("Database error: {}", err))
+    }
+}

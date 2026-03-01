@@ -3,6 +3,7 @@
 //! 使用 SQLite 存储进程历史记录和统计信息
 
 use rusqlite::{Connection, Result as SqliteResult};
+use rusqlite::OptionalExtension;
 use std::path::PathBuf;
 use chrono::{DateTime, Utc};
 use tracing::{debug, error, info};
@@ -103,7 +104,7 @@ impl Storage {
         self.conn.execute(
             "INSERT INTO process_history (name, pid, start_time, auto_restart)
              VALUES (?1, ?2, ?3, ?4)",
-            (name, pid as i64, now, auto_restart),
+            (name, pid as i64, now.clone(), auto_restart),
         )?;
         
         let id = self.conn.last_insert_rowid();
