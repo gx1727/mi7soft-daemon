@@ -178,7 +178,8 @@ impl Daemon {
         if all_dead.contains(&name.to_string()) {
             info!(process = name, "Dead processes found");
             if let Some(config) = self.find_config(name) {
-                if config.auto_restart {
+                // For cron scheduled processes, always auto_restart
+                if self.should_auto_restart(&config) {
                     warn!(process = name, "Auto-restarting dead process");
                     if let Err(e) = self.process_manager.spawn(&config).await {
                         error!(process = name, error = %e, "Failed to restart process");
@@ -187,6 +188,16 @@ impl Daemon {
             }
         }
         Ok(())
+    }
+
+    /// Check if a process should auto restart
+    /// For cron scheduled processes, always return true
+    fn should_auto_restart(&self, config: &ProcessConfig) -> bool {
+        if config.schedule.is_some() {
+            // Cron scheduled processes should always auto restart
+            return true;
+        }
+        config.auto_restart
     }
     
     async fn start_processes(&mut self) -> Result<(), DaemonError> {
