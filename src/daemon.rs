@@ -1,6 +1,6 @@
 use crate::config::{DaemonConfig, ProcessConfig, load_config};
 use crate::error::DaemonError;
-use crate::process::{ProcessManager, ProcessState};
+use crate::process::{ProcessManager, ProcessState, ProcessStatus};
 use crate::pidfile::PidFile;
 use crate::signal::{Signal, SignalHandler};
 use std::path::PathBuf;
@@ -19,22 +19,30 @@ pub struct Daemon {
 
 impl Daemon {
     pub fn new(config_path: PathBuf, pid_file_path: &str) -> Result<Self, DaemonError> {
+        Self::new_impl(config_path, pid_file_path, true)
+    }
+
+    pub fn new_read_only(config_path: PathBuf, pid_file_path: &str) -> Result<Self, DaemonError> {
+        Self::new_impl(config_path, pid_file_path, false)
+    }
+
+    fn new_impl(config_path: PathBuf, pid_file_path: &str, acquire_lock: bool) -> Result<Self, DaemonError> {
         let config = load_config(&config_path)?;
         let mut process_manager = ProcessManager::new();
         
-        // Derive state file path from pid_file_path
         let state_file = PathBuf::from(pid_file_path).with_extension("state");
         
-        // Load existing state and verify processes
         process_manager.load_state(&state_file)?;
         
         let mut pid_file = PidFile::new(pid_file_path);
         
-        #[cfg(unix)]
-        pid_file.acquire_lock()?;
-        
-        #[cfg(not(unix))]
-        let _ = pid_file.acquire_lock;
+        if acquire_lock {
+            #[cfg(unix)]
+            pid_file.acquire_lock()?;
+            
+            #[cfg(not(unix))]
+            let _ = pid_file.acquire_lock;
+        }
         
         Ok(Self {
             config_path,
@@ -50,9 +58,13 @@ impl Daemon {
     pub async fn run(&mut self) -> Result<(), DaemonError> {
         info!("Starting daemon");
         
+        info!("Checking for existing processes...");
         // If no processes loaded from state, spawn configured ones
         if self.process_manager.process_names().is_empty() {
+            info!("No processes found, spawning from config...");
             self.start_processes().await?;
+        } else {
+            info!("Loaded {} processes from state", self.process_manager.process_names().len());
         }
         
         // Save initial state
@@ -114,7 +126,9 @@ impl Daemon {
     }
     
     async fn monitor_and_restart(&mut self) -> Result<(), DaemonError> {
+        info!("Running monitor check...");
         let dead_names = self.process_manager.cleanup_dead();
+        info!("Dead processes found: {:?}", dead_names);
         
         for name in dead_names {
             if let Some(config) = self.find_config(&name) {
@@ -215,18 +229,11 @@ impl Daemon {
         }
     }
     
-    pub fn get_status(&self, name: &str) -> Result<Vec<String>, DaemonError> {
-        let statuses = self.process_manager.status(name)?;
-        Ok(statuses.into_iter().map(|s| format!(
-            "{} (PID: {}, State: {:?}, Uptime: {}s)",
-            s.name, s.pid, s.state, s.uptime
-        )).collect())
+    pub fn get_status(&self, name: &str) -> Result<Vec<ProcessStatus>, DaemonError> {
+        self.process_manager.status(name)
     }
     
-    pub fn get_all_status(&self) -> Vec<String> {
-        self.process_manager.status_all().into_iter().map(|s| format!(
-            "{} (PID: {}, State: {:?}, Uptime: {}s)",
-            s.name, s.pid, s.state, s.uptime
-        )).collect()
+    pub fn get_all_status(&self) -> Vec<ProcessStatus> {
+        self.process_manager.status_all()
     }
 }

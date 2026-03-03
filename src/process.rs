@@ -241,6 +241,26 @@ impl ProcessManager {
     pub fn is_process_alive(&self, pid: u32) -> bool {
         #[cfg(unix)]
         {
+            // Check if process exists using /proc/{pid}/stat
+            let stat_path = format!("/proc/{}/stat", pid);
+            if let Ok(content) = std::fs::read_to_string(&stat_path) {
+                // Format: pid (name) state ...
+                // State is the 3rd field, e.g., "R", "S", "Z", "X", etc.
+                if let Some(state_start) = content.find('(') {
+                    if let Some(state_end) = content.find(')') {
+                        if state_end + 2 < content.len() {
+                            let state = content.chars().nth(state_end + 2).unwrap_or('X');
+                            tracing::info!("PID {} state: '{}'", pid, state);
+                            // 'Z' = zombie, 'X' = dead
+                            if state == 'Z' || state == 'X' {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Fallback: use kill(pid, 0)
             use nix::sys::signal::{kill, Signal};
             use nix::unistd::Pid;
             kill(Pid::from_raw(pid as i32), None).is_ok()
