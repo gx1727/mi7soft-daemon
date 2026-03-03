@@ -1,5 +1,7 @@
 # mi7soft-daemon
 
+**官网：** https://gx1727.github.io/mi7soft-daemon
+
 进程守护工具 - 让你的服务持续运行。
 
 ## 功能特性
@@ -32,6 +34,10 @@
 - **历史记录**：记录进程的每次启动、停止、重启
 - **统计信息**：统计进程的总启动次数、失败次数、平均运行时间
 - **自动清理**：支持自动清理旧的历史记录
+
+#### 4. 进程级调度功能 (v0.1.3+)
+- **进程级检查间隔**：支持在每个进程配置中设置检查间隔，覆盖全局配置
+- **Cron 定时调度**：支持 cron 表达式定时调度（通过进程死亡检测实现定时执行）
 
 ## 编译安装
 
@@ -89,9 +95,67 @@ working_directory = "/var/www"
 auto_restart = true
 capture_output = true
 log_file = "/var/log/web-server.log"
+
+# 🆕 进程级检查间隔（覆盖全局 check_interval）
+[[processes]]
+name = "quick-service"
+command = "/usr/bin/php"
+args = ["worker.php"]
+check_interval = 3  # 每3秒检查一次（全局是5秒）
+auto_restart = true
+
+# 🆕 Cron 定时调度（每天凌晨3点执行）
+[[processes]]
+name = "daily-task"
+command = "/usr/bin/php"
+args = ["daily.php"]
+schedule = { type = "cron", expression = "0 3 * * *" }
+auto_restart = false
+
+# 🆕 Cron 定时调度（每30分钟执行）
+[[processes]]
+name = "interval-task"
+command = "/usr/bin/php"
+args = ["interval.php"]
+schedule = { type = "cron", expression = "*/30 * * * *" }
+auto_restart = false
 ```
 
-### 命令行用法
+### 🆕 进程级调度配置 (v0.1.3+)
+
+进程级调度支持两种模式：
+
+**1. 进程级检查间隔**
+```toml
+[[processes]]
+name = "my-service"
+command = "/usr/bin/php"
+args = ["worker.php"]
+check_interval = 3  # 每3秒检查一次（覆盖全局的5秒）
+auto_restart = true
+```
+
+**2. Cron 定时调度**
+```toml
+[[processes]]
+name = "daily-task"
+command = "/usr/bin/php"
+args = ["daily.php"]
+schedule = { type = "cron", expression = "0 3 * * *" }
+auto_restart = false  # Cron 模式下通常设为 false
+```
+
+**Cron 表达式示例：**
+
+| 表达式 | 说明 |
+|--------|------|
+| `0 3 * * *` | 每天凌晨3点 |
+| `*/30 * * * *` | 每30分钟 |
+| `0 9,18 * * *` | 每天9点和18点 |
+| `0 * * * *` | 每小时执行一次 |
+| `*/5 * * * *` | 每5分钟 |
+
+**注意：** Cron 调度通过进程死亡检测实现定时执行效果。配置 `auto_restart = false` 时，进程执行完毕后退出，守护进程检测到进程退出后会重新拉起，从而实现定时执行。
 
 #### 基本命令
 
@@ -353,6 +417,13 @@ pnpm dev
 
 ## 更新日志
 
+### v0.1.3 (2026-03-03)
+- 🆕 进程级 check_interval 配置，支持覆盖全局间隔
+- 🆕 Cron 调度模式支持，支持 cron 表达式定时调度
+- 🆕 表格化状态输出（类似 pm2）
+- 🆕 修复 status 命令和 stop 命令问题
+- 🆕 修复僵尸进程检测问题
+
 ### v0.1.2 (2026-02-28)
 - 🆕 统一日志系统（tracing 框架）
 - 🆕 进程输出捕获（logs 命令）
@@ -379,6 +450,6 @@ MIT License - 查看 [LICENSE](LICENSE) 文件。
 
 ---
 
-**文档版本：** v0.1.2  
-**最后更新：** 2026-02-28  
+**文档版本：** v0.1.3  
+**最后更新：** 2026-03-03  
 **维护者：** gx1727 + 星尘 (OpenClaw AI Assistant)
