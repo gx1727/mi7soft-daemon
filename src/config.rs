@@ -4,6 +4,22 @@ use std::collections::HashMap;
 use std::path::Path;
 use crate::error::DaemonError;
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Schedule {
+    #[serde(rename = "type")]
+    pub schedule_type: ScheduleType,
+    pub interval: Option<u64>,
+    pub expression: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub enum ScheduleType {
+    #[serde(rename = "interval")]
+    Interval,
+    #[serde(rename = "cron")]
+    Cron,
+}
+
 /// Daemon configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DaemonConfig {
@@ -68,6 +84,14 @@ pub struct ProcessConfig {
     /// 最大日志文件大小（字节）（新增）
     #[serde(default)]
     pub max_log_size: Option<u64>,
+    
+    /// 进程级别的检查间隔（秒），可选，若不配置则使用全局 check_interval
+    #[serde(default)]
+    pub check_interval: Option<u64>,
+    
+    /// 调度模式：interval 或 cron
+    #[serde(default)]
+    pub schedule: Option<Schedule>,
 }
 
 fn default_capture_output() -> bool {
@@ -137,11 +161,14 @@ args = ["100"]
 working_directory = "/tmp"
 auto_restart = true
 capture_output = true
+check_interval = 3
+schedule = { type = "interval", interval = 5 }
 
 [[processes]]
 name = "another-process"
 command = "/bin/echo"
 args = ["hello"]
+schedule = { type = "cron", expression = "0 3 * * *" }
 "#;
         let mut temp_file = NamedTempFile::new().unwrap();
         write!(temp_file, "{}", config_content).unwrap();

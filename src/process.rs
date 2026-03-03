@@ -1,9 +1,10 @@
-use crate::config::ProcessConfig;
+use crate::config::{ProcessConfig, Schedule as ProcessSchedule, ScheduleType};
 use crate::error::DaemonError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::str::FromStr;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::process::Child;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,6 +36,91 @@ pub struct ProcessStatus {
     pub state: ProcessState,
     pub uptime: u64,
     pub memory: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Schedule {
+    pub schedule_type: ScheduleType,
+    pub interval: Option<u64>,
+    pub expression: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum SchedulerType {
+    Interval,
+    Cron,
+}
+
+pub struct Scheduler {
+    pub scheduler_type: SchedulerType,
+    pub interval: Option<u64>,
+    pub cron_expression: Option<String>,
+    pub next_run: Option<Instant>,
+    compiled_schedule: Option<cron::Schedule>,
+}
+
+impl Scheduler {
+    pub fn from_config(schedule: &ProcessSchedule, global_interval: u64) -> Self {
+        let (scheduler_type, interval, cron_expression, compiled_schedule) = match schedule.schedule_type {
+            crate::config::ScheduleType::Interval => {
+                let interval = schedule.interval.unwrap_or(global_interval);
+                (SchedulerType::Interval, Some(interval), None, None)
+            }
+            crate::config::ScheduleType::Cron => {
+                let expr = schedule.expression.as_deref().unwrap_or("* * * * *");
+                let compiled = cron::Schedule::from_str(expr).ok();
+                (SchedulerType::Cron, None, schedule.expression.clone(), compiled)
+            }
+        };
+
+        let next_run = Self::calculate_next_run(scheduler_type.clone(), interval, cron_expression.as_deref(), compiled_schedule.as_ref());
+
+        Self {
+            scheduler_type,
+            interval,
+            cron_expression,
+            next_run,
+            compiled_schedule,
+        }
+    }
+
+    fn calculate_next_run(
+        scheduler_type: SchedulerType,
+        interval: Option<u64>,
+        cron_expression: Option<&str>,
+        compiled_schedule: Option<&cron::Schedule>,
+    ) -> Option<Instant> {
+        match scheduler_type {
+            SchedulerType::Interval => {
+                interval.map(|i| Instant::now() + Duration::from_secs(i))
+            }
+            SchedulerType::Cron => {
+                if let Some(schedule) = compiled_schedule {
+                    if let Some(dt) = schedule.upcoming(chrono::Utc).next() {
+                        let now = chrono::Utc::now();
+                        let duration = dt.signed_duration_since(now);
+                        return Some(Instant::now() + Duration::from_secs(duration.num_seconds() as u64));
+                    }
+                }
+                None
+            }
+        }
+    }
+
+    pub fn should_run(&mut self) -> bool {
+        if let Some(next) = self.next_run {
+            if Instant::now() >= next {
+                self.next_run = Self::calculate_next_run(
+                    self.scheduler_type.clone(),
+                    self.interval,
+                    self.cron_expression.as_deref(),
+                    self.compiled_schedule.as_ref(),
+                );
+                return true;
+            }
+        }
+        false
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

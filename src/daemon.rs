@@ -1,9 +1,11 @@
 use crate::config::{DaemonConfig, ProcessConfig, load_config};
 use crate::error::DaemonError;
-use crate::process::{ProcessManager, ProcessState, ProcessStatus};
+use crate::process::{ProcessManager, ProcessState, ProcessStatus, Scheduler};
 use crate::pidfile::PidFile;
 use crate::signal::{Signal, SignalHandler};
+use std::collections::HashMap;
 use std::path::PathBuf;
+use std::time::Instant;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
@@ -15,6 +17,7 @@ pub struct Daemon {
     pid_file: PidFile,
     signal_handler: SignalHandler,
     shutdown_tx: Option<mpsc::UnboundedSender<bool>>,
+    schedulers: HashMap<String, Scheduler>,
 }
 
 impl Daemon {
@@ -43,6 +46,18 @@ impl Daemon {
             #[cfg(not(unix))]
             let _ = pid_file.acquire_lock;
         }
+
+        let global_interval = config.daemon.as_ref()
+            .map(|d| d.check_interval)
+            .unwrap_or(5);
+
+        let mut schedulers = HashMap::new();
+        for proc in &config.processes {
+            if let Some(ref schedule) = proc.schedule {
+                let scheduler = Scheduler::from_config(schedule, global_interval);
+                schedulers.insert(proc.name.clone(), scheduler);
+            }
+        }
         
         Ok(Self {
             config_path,
@@ -52,6 +67,7 @@ impl Daemon {
             pid_file,
             signal_handler: SignalHandler::new(),
             shutdown_tx: None,
+            schedulers,
         })
     }
     
@@ -59,7 +75,6 @@ impl Daemon {
         info!("Starting daemon");
         
         info!("Checking for existing processes...");
-        // If no processes loaded from state, spawn configured ones
         if self.process_manager.process_names().is_empty() {
             info!("No processes found, spawning from config...");
             self.start_processes().await?;
@@ -67,27 +82,41 @@ impl Daemon {
             info!("Loaded {} processes from state", self.process_manager.process_names().len());
         }
         
-        // Save initial state
         self.process_manager.save_state(&self.state_file)?;
         
         let (shutdown_tx, mut shutdown_rx) = mpsc::unbounded_channel();
         self.shutdown_tx = Some(shutdown_tx);
         
-        let check_interval = self.config.daemon.as_ref()
+        let global_interval = self.config.daemon.as_ref()
             .map(|d| d.check_interval)
             .unwrap_or(5);
         
-        info!(check_interval = check_interval, "Daemon started, monitoring processes");
+        let has_schedulers = !self.schedulers.is_empty();
+        
+        if has_schedulers {
+            info!("Using per-process scheduling");
+        } else {
+            info!(global_interval = global_interval, "Daemon started, monitoring processes");
+        }
         
         let mut interval = tokio::time::interval(
-            tokio::time::Duration::from_secs(check_interval)
+            tokio::time::Duration::from_secs(1)
         );
+        
+        let mut last_full_check = Instant::now();
         
         loop {
             tokio::select! {
                 _ = interval.tick() => {
-                    self.monitor_and_restart().await?;
-                    self.process_manager.save_state(&self.state_file)?;
+                    if has_schedulers {
+                        self.monitor_scheduled().await?;
+                    } else {
+                        if last_full_check.elapsed() >= tokio::time::Duration::from_secs(global_interval) {
+                            self.monitor_and_restart().await?;
+                            self.process_manager.save_state(&self.state_file)?;
+                            last_full_check = Instant::now();
+                        }
+                    }
                 }
                 Some(signal) = self.signal_handler.recv() => {
                     match signal {
@@ -110,6 +139,54 @@ impl Daemon {
                 }
             }
         }
+    }
+
+    async fn monitor_scheduled(&mut self) -> Result<(), DaemonError> {
+        let global_interval = self.config.daemon.as_ref()
+            .map(|d| d.check_interval)
+            .unwrap_or(5);
+
+        static last_full_check: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+        let last_check = last_full_check.get_or_init(Instant::now);
+
+        // Get scheduler names to check
+        let scheduler_names: Vec<String> = self.schedulers.keys().cloned().collect();
+        
+        for name in scheduler_names {
+            if let Some(scheduler) = self.schedulers.get_mut(&name) {
+                if scheduler.should_run() {
+                    info!(process = name.as_str(), "Running scheduled check");
+                    self.monitor_single(&name).await?;
+                }
+            }
+        }
+
+        if last_check.elapsed() >= tokio::time::Duration::from_secs(global_interval) {
+            self.monitor_and_restart().await?;
+            // Reset the instant
+            let _ = last_full_check.set(Instant::now());
+        }
+
+        self.process_manager.save_state(&self.state_file)?;
+        Ok(())
+    }
+
+    async fn monitor_single(&mut self, name: &str) -> Result<(), DaemonError> {
+        // Use cleanup_dead and check if our process was affected
+        let all_dead = self.process_manager.cleanup_dead();
+        
+        if all_dead.contains(&name.to_string()) {
+            info!(process = name, "Dead processes found");
+            if let Some(config) = self.find_config(name) {
+                if config.auto_restart {
+                    warn!(process = name, "Auto-restarting dead process");
+                    if let Err(e) = self.process_manager.spawn(&config).await {
+                        error!(process = name, error = %e, "Failed to restart process");
+                    }
+                }
+            }
+        }
+        Ok(())
     }
     
     async fn start_processes(&mut self) -> Result<(), DaemonError> {
