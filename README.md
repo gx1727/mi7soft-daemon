@@ -109,7 +109,7 @@ auto_restart = true
 name = "daily-task"
 command = "/usr/bin/php"
 args = ["daily.php"]
-schedule = { type = "cron", expression = "0 3 * * *" }
+schedule = { type = "cron", expression = "0 0 3 * * *" }
 auto_restart = false
 
 # 🆕 Cron 定时调度（每30分钟执行）
@@ -117,7 +117,7 @@ auto_restart = false
 name = "interval-task"
 command = "/usr/bin/php"
 args = ["interval.php"]
-schedule = { type = "cron", expression = "*/30 * * * *" }
+schedule = { type = "cron", expression = "0 */30 * * * *" }
 auto_restart = false
 ```
 
@@ -141,19 +141,19 @@ auto_restart = true
 name = "daily-task"
 command = "/usr/bin/php"
 args = ["daily.php"]
-schedule = { type = "cron", expression = "0 3 * * *" }
+schedule = { type = "cron", expression = "0 0 3 * * *" }
 auto_restart = false  # Cron 模式下通常设为 false
 ```
 
-**Cron 表达式示例：**
+**⚠️ Cron 表达式格式：6 字段（秒 分 时 日 月 周）**
 
 | 表达式 | 说明 |
 |--------|------|
-| `0 3 * * *` | 每天凌晨3点 |
-| `*/30 * * * *` | 每30分钟 |
-| `0 9,18 * * *` | 每天9点和18点 |
-| `0 * * * *` | 每小时执行一次 |
-| `*/5 * * * *` | 每5分钟 |
+| `0 0 3 * * *` | 每天凌晨3点 |
+| `0 * * * * *` | 每分钟 |
+| `0 0 * * * *` | 每小时 |
+| `0 0 9,18 * * *` | 每天9点和18点 |
+| `0 */5 * * * *` | 每5分钟 |
 
 **注意：** 配置 `schedule` 后，系统会自动强制 `auto_restart = true`，按 cron 表达式定时执行。
 

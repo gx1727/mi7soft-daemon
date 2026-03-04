@@ -2,7 +2,71 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] - 2026-02-28
+## [Unreleased] - 2026-03-04
+
+## [0.1.3] - 2026-03-04
+
+### Added - 路径 A: 调度功能增强
+
+#### Cron 定时调度
+- ✅ 新增进程级调度功能
+  - Scheduler 结构体（支持 Interval 和 Cron 模式）
+  - Cron 表达式解析（6 字段格式：秒 分 时 日 月 周）
+  - 按时间定时执行任务
+
+- ✅ 配置系统更新
+  - `schedule` 字段（type: interval/cron）
+  - `expression` 字段（Cron 表达式）
+  - `check_interval` 字段（进程级检查间隔）
+
+- ✅ Cron 表达式格式（6 字段）
+  ```toml
+  # 每分钟执行
+  schedule = { type = "cron", expression = "0 * * * * *" }
+  
+  # 每天凌晨3点
+  schedule = { type = "cron", expression = "0 0 3 * * *" }
+  
+  # 每5分钟
+  schedule = { type = "cron", expression = "0 */5 * * * *" }
+  ```
+
+- ⚠️ 注意：Cron 表达式必须使用 6 字段格式，不支持 5 字段格式
+
+#### 代码重构
+- ✅ 拆分 main.rs
+  - 提取 formatter.rs - 输出格式化工具
+  - main.rs 精简为入口 + 命令路由
+- ✅ 修复 capture_output 未生效问题
+- ✅ 添加详细的调试日志
+
+### Changed
+
+- Cron 调度器初始化日志
+- 进程组杀死逻辑优化
+- 修复多个 borrow checker 问题
+
+### Bug Fixes
+
+- 修复日志捕获未生效（capture_output）
+- 修复 Cron 表达式格式（5字段→6字段）
+- 修复 static 变量命名规范
+
+### Files Changed
+
+**新增文件：**
+- src/formatter.rs - 输出格式化
+
+**修改文件：**
+- src/daemon.rs - 调度逻辑重构
+- src/process.rs - 添加 Scheduler + 修复日志捕获
+- src/main.rs - 代码拆分
+- README.md - Cron 表达式格式更新
+- web/src/pages/Features.tsx - 添加 Cron 功能展示
+
+---
+
+## [0.1.2] - 2026-02-28
 
 ### Added - 路径 A: 核心功能增强
 

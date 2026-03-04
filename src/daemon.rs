@@ -1,6 +1,6 @@
 use crate::config::{DaemonConfig, ProcessConfig, load_config};
 use crate::error::DaemonError;
-use crate::process::{ProcessManager, ProcessState, ProcessStatus, Scheduler};
+use crate::process::{ProcessManager, ProcessStatus, Scheduler};
 use crate::pidfile::PidFile;
 use crate::signal::{Signal, SignalHandler};
 use std::collections::HashMap;
@@ -93,8 +93,13 @@ impl Daemon {
         
         let has_schedulers = !self.schedulers.is_empty();
         
+        let has_schedulers = !self.schedulers.is_empty();
+        
         if has_schedulers {
-            info!("Using per-process scheduling");
+            info!(count = self.schedulers.len(), "Using per-process scheduling");
+            for (name, sched) in &self.schedulers {
+            info!(process = name.as_str(), scheduler_type = ?sched.scheduler_type, next_run = ?sched.next_run, "Scheduler initialized");
+        }
         } else {
             info!(global_interval = global_interval, "Daemon started, monitoring processes");
         }
@@ -146,25 +151,38 @@ impl Daemon {
             .map(|d| d.check_interval)
             .unwrap_or(5);
 
-        static last_full_check: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
-        let last_check = last_full_check.get_or_init(Instant::now);
+        static LAST_FULL_CHECK: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+        let last_check = LAST_FULL_CHECK.get_or_init(Instant::now);
 
         // Get scheduler names to check
         let scheduler_names: Vec<String> = self.schedulers.keys().cloned().collect();
         
         for name in scheduler_names {
             if let Some(scheduler) = self.schedulers.get_mut(&name) {
-                if scheduler.should_run() {
-                    info!(process = name.as_str(), "Running scheduled check");
-                    self.monitor_single(&name).await?;
+                let should_run = scheduler.should_run();
+                info!(process = name.as_str(), should_run = should_run, "Cron check");
+                if should_run {
+                    if let Some(config) = self.find_config(&name) {
+                        let config = config.clone();
+                        // 启动 cron 进程
+                        if let Err(e) = self.process_manager.spawn(&config).await {
+                            error!(process = name.as_str(), error = %e, "Failed to start cron process");
+                        }
+                    }
                 }
             }
+        }
+
+        // 清理已死亡的 cron 进程（但不自动重启，由 cron 调度控制）
+        let dead_names = self.process_manager.cleanup_dead();
+        if !dead_names.is_empty() {
+            info!(processes = ?dead_names, "Cron processes completed");
         }
 
         if last_check.elapsed() >= tokio::time::Duration::from_secs(global_interval) {
             self.monitor_and_restart().await?;
             // Reset the instant
-            let _ = last_full_check.set(Instant::now());
+            let _ = LAST_FULL_CHECK.set(Instant::now());
         }
 
         self.process_manager.save_state(&self.state_file)?;
@@ -172,36 +190,31 @@ impl Daemon {
     }
 
     async fn monitor_single(&mut self, name: &str) -> Result<(), DaemonError> {
-        // Use cleanup_dead and check if our process was affected
-        let all_dead = self.process_manager.cleanup_dead();
+        // 非 cron 进程：死亡后自动重启
+        // cron 进程：不做处理，由 monitor_scheduled 控制
+        let config = match self.find_config(name) {
+            Some(c) if c.schedule.is_none() && c.auto_restart => c.clone(),
+            _ => return Ok(()),
+        };
         
+        let all_dead = self.process_manager.cleanup_dead();
         if all_dead.contains(&name.to_string()) {
-            info!(process = name, "Dead processes found");
-            if let Some(config) = self.find_config(name) {
-                // For cron scheduled processes, always auto_restart
-                if self.should_auto_restart(&config) {
-                    warn!(process = name, "Auto-restarting dead process");
-                    if let Err(e) = self.process_manager.spawn(&config).await {
-                        error!(process = name, error = %e, "Failed to restart process");
-                    }
-                }
+            warn!(process = name, "Auto-restarting dead process");
+            if let Err(e) = self.process_manager.spawn(&config).await {
+                error!(process = name, error = %e, "Failed to restart process");
             }
         }
         Ok(())
     }
-
-    /// Check if a process should auto restart
-    /// For cron scheduled processes, always return true
-    fn should_auto_restart(&self, config: &ProcessConfig) -> bool {
-        if config.schedule.is_some() {
-            // Cron scheduled processes should always auto restart
-            return true;
-        }
-        config.auto_restart
-    }
     
     async fn start_processes(&mut self) -> Result<(), DaemonError> {
         for process_config in &self.config.processes {
+            // Cron 进程不在启动时启动，等待 cron 时间点
+            if process_config.schedule.is_some() {
+                info!(process = process_config.name.as_str(), "Cron process - waiting for schedule");
+                continue;
+            }
+            
             if let Err(e) = self.process_manager.spawn(process_config).await {
                 error!(
                     process = process_config.name.as_str(),
@@ -220,8 +233,13 @@ impl Daemon {
         
         for name in dead_names {
             if let Some(config) = self.find_config(&name) {
+                // Cron 进程不自动重启
+                if config.schedule.is_some() {
+                    continue;
+                }
                 if config.auto_restart {
                     warn!(process = name.as_str(), "Auto-restarting dead process");
+                    let config = config.clone();
                     if let Err(e) = self.process_manager.spawn(&config).await {
                         error!(
                             process = name.as_str(),
@@ -281,8 +299,8 @@ impl Daemon {
         Ok(())
     }
     
-    fn find_config(&self, name: &str) -> Option<ProcessConfig> {
-        self.config.processes.iter().find(|p| &p.name == name).cloned()
+    fn find_config(&self, name: &str) -> Option<&ProcessConfig> {
+        self.config.processes.iter().find(|p| &p.name == name)
     }
     
     pub fn trigger_shutdown(&self) {
@@ -293,6 +311,7 @@ impl Daemon {
     
     pub async fn start_process(&mut self, name: &str) -> Result<u32, DaemonError> {
         if let Some(config) = self.find_config(name) {
+            let config = config.clone();
             let pid = self.process_manager.spawn(&config).await?;
             self.process_manager.save_state(&self.state_file)?;
             Ok(pid)
@@ -309,6 +328,7 @@ impl Daemon {
     
     pub async fn restart_process(&mut self, name: &str) -> Result<Vec<u32>, DaemonError> {
         if let Some(config) = self.find_config(name) {
+            let config = config.clone();
             let pids = self.process_manager.restart(&config).await?;
             self.process_manager.save_state(&self.state_file)?;
             Ok(pids)

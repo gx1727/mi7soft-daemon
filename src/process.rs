@@ -68,8 +68,13 @@ impl Scheduler {
             }
             crate::config::ScheduleType::Cron => {
                 let expr = schedule.expression.as_deref().unwrap_or("* * * * *");
-                let compiled = cron::Schedule::from_str(expr).ok();
-                (SchedulerType::Cron, None, schedule.expression.clone(), compiled)
+                tracing::debug!(expr = expr, "Cron: parsing expression");
+                let compiled = cron::Schedule::from_str(expr);
+                match &compiled {
+                    Ok(s) => tracing::debug!(schedule = ?s, "Cron: expression parsed OK"),
+                    Err(e) => tracing::warn!(expr = expr, error = ?e, "Cron: failed to parse expression"),
+                }
+                (SchedulerType::Cron, None, schedule.expression.clone(), compiled.ok())
             }
         };
 
@@ -92,33 +97,50 @@ impl Scheduler {
     ) -> Option<Instant> {
         match scheduler_type {
             SchedulerType::Interval => {
-                interval.map(|i| Instant::now() + Duration::from_secs(i))
+                interval.map(|i| {
+                    let next = Instant::now() + Duration::from_secs(i);
+                    tracing::debug!(interval = i, next_ms = next.elapsed().as_millis(), "Interval next_run");
+                    next
+                })
             }
             SchedulerType::Cron => {
+                tracing::debug!(expr = cron_expression, "Cron: trying to calculate next run");
                 if let Some(schedule) = compiled_schedule {
+                    tracing::debug!(schedule = ?schedule, "Cron: schedule compiled OK");
                     if let Some(dt) = schedule.upcoming(chrono::Utc).next() {
                         let now = chrono::Utc::now();
                         let duration = dt.signed_duration_since(now);
-                        return Some(Instant::now() + Duration::from_secs(duration.num_seconds() as u64));
+                        let next = Instant::now() + Duration::from_secs(duration.num_seconds() as u64);
+                        tracing::debug!(next_run = ?dt, now = ?now, diff_sec = duration.num_seconds(), "Cron next_run calculated");
+                        return Some(next);
+                    } else {
+                        tracing::warn!("Cron: schedule.upcoming().next() returned None");
                     }
+                } else {
+                    tracing::warn!("Cron: compiled_schedule is None");
                 }
+                tracing::warn!(scheduler_type = ?scheduler_type, "Cron: no next run calculated");
                 None
             }
         }
     }
 
     pub fn should_run(&mut self) -> bool {
+        let now = Instant::now();
         if let Some(next) = self.next_run {
-            if Instant::now() >= next {
+            tracing::debug!(scheduler_type = ?self.scheduler_type, now_ms = now.elapsed().as_millis(), next_ms = ?next.elapsed().as_millis(), "should_run check");
+            if now >= next {
                 self.next_run = Self::calculate_next_run(
                     self.scheduler_type.clone(),
                     self.interval,
                     self.cron_expression.as_deref(),
                     self.compiled_schedule.as_ref(),
                 );
+                tracing::info!(scheduler_type = ?self.scheduler_type, "should_run: TRUE");
                 return true;
             }
         }
+        tracing::debug!(scheduler_type = ?self.scheduler_type, "should_run: false");
         false
     }
 }
@@ -208,10 +230,39 @@ impl ProcessManager {
         // 这样 kill(-(pid as i32)) 就能杀死整个进程组（包括所有 Swoole 子进程）
         cmd.process_group(0);
         
-        let child = cmd.spawn().map_err(|e| DaemonError::StartFailed {
+        // 🔧 捕获进程输出
+        if config.capture_output {
+            cmd.stdout(std::process::Stdio::piped());
+            cmd.stderr(std::process::Stdio::piped());
+        }
+        
+        let mut child = cmd.spawn().map_err(|e| DaemonError::StartFailed {
             name: config.name.clone(),
             reason: format!("Failed: {}", e),
         })?;
+        
+        // 🔧 启动输出捕获任务
+        if config.capture_output {
+            if let (Some(stdout), Some(stderr)) = (child.stdout.take(), child.stderr.take()) {
+                let name = config.name.clone();
+                let log_file = config.log_file.clone().unwrap_or_else(|| {
+                    format!("/var/log/mi7soft-{}.log", config.name)
+                });
+                let max_size = config.max_log_size;
+                
+                tokio::spawn(async move {
+                    use crate::process_output::OutputCapture;
+                    let (mut capture, mut receiver) = OutputCapture::new(
+                        name,
+                        std::path::PathBuf::from(&log_file),
+                        max_size,
+                    );
+                    capture.capture_stdout(stdout);
+                    capture.capture_stderr(stderr);
+                    capture.start_writer(receiver);
+                });
+            }
+        }
         
         let pid = child.id().unwrap() as u32;
         self.registry.entry(config.name.clone())

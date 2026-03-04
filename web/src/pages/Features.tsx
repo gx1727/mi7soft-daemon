@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Cpu, RefreshCw, FileJson, Server, Database, Settings, Terminal, FileText } from 'lucide-react';
+import { Cpu, RefreshCw, FileJson, Server, Database, Settings, Terminal, FileText, Clock } from 'lucide-react';
 import CodeBlock from '../components/ui/CodeBlock';
 import { useTranslation, Trans } from 'react-i18next';
 
@@ -28,6 +28,48 @@ $ m7d restart swoole-server
 > All processes terminated
 > Server restarted successfully`}
           language="bash"
+        />
+      )
+    },
+    {
+      id: 'cron-schedule',
+      title: 'Cron 定时调度',
+      description: '支持 Cron 表达式定时执行任务，适合定时批处理、数据同步等场景',
+      benefits: [
+        '精确的时间控制',
+        '支持 6 字段格式（秒 分 时 日 月 周）',
+        '每分钟、每小时、每天定时执行',
+        '兼容标准 Cron 表达式'
+      ],
+      icon: <Clock className="w-6 h-6 text-yellow-400" />,
+      content: (
+        <CodeBlock
+          code={`# daemon.toml - Cron 调度配置
+
+# 每分钟执行
+[[processes]]
+name = "minute-task"
+command = "/usr/bin/php"
+args = ["task.php"]
+schedule = { type = "cron", expression = "0 * * * * *" }
+auto_restart = false
+
+# 每天凌晨3点执行
+[[processes]]
+name = "daily-backup"
+command = "/usr/bin/php"
+args = ["backup.php"]
+schedule = { type = "cron", expression = "0 0 3 * * *" }
+auto_restart = false
+
+# 每5分钟执行
+[[processes]]
+name = "sync-data"
+command = "/usr/bin/php"
+args = ["sync.php"]
+schedule = { type = "cron", expression = "0 */5 * * * *" }
+auto_restart = false`}
+          language="toml"
         />
       )
     },

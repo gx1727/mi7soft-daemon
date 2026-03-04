@@ -1,0 +1,58 @@
+[daemon]
+pid_file = "/var/run/mi7soft-test.pid"
+log_file = "/var/log/mi7soft-test.log"
+check_interval = 3
+
+# 普通持续运行进程
+[[processes]]
+name = "test-run"
+command = "php"
+args = ["test.php", "run"]
+working_directory = "/root/work/mi7soft-daemon"
+auto_restart = true
+capture_output = true
+log_file = "/var/log/mi7soft-test-run.log"
+max_instances = 1
+
+# 自动重启的短任务
+[[processes]]
+name = "test-once"
+command = "php"
+args = ["test.php", "once"]
+working_directory = "/root/work/mi7soft-daemon"
+auto_restart = true
+capture_output = true
+log_file = "/var/log/mi7soft-test-once.log"
+
+# 进程级间隔检查
+[[processes]]
+name = "test-interval"
+command = "php"
+args = ["test.php", "once"]
+working_directory = "/root/work/mi7soft-daemon"
+check_interval = 5
+auto_restart = true
+capture_output = true
+log_file = "/var/log/mi7soft-test-interval.log"
+
+# Cron 模式：每分钟执行一次 (6字段格式: 秒 分 时 日 月 周)
+[[processes]]
+name = "test-cron-every-min"
+command = "php"
+args = ["test.php", "once"]
+working_directory = "/root/work/mi7soft-daemon"
+schedule = { type = "cron", expression = "0 * * * * *" }
+auto_restart = false
+capture_output = true
+log_file = "/var/log/mi7soft-test-cron.log"
+
+# Cron 模式：每小时执行一次
+[[processes]]
+name = "test-cron-hourly"
+command = "php"
+args = ["test.php", "once"]
+working_directory = "/root/work/mi7soft-daemon"
+schedule = { type = "cron", expression = "0 0 * * * *" }
+auto_restart = false
+capture_output = true
+log_file = "/var/log/mi7soft-test-cron2.log"
