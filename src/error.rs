@@ -1,4 +1,3 @@
-use std::fmt;
 use thiserror::Error;
 
 /// Main error type for the daemon process manager

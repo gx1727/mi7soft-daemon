@@ -5,7 +5,6 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::str::FromStr;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use tokio::process::Child;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessEntry {
@@ -252,7 +251,7 @@ impl ProcessManager {
                 
                 tokio::spawn(async move {
                     use crate::process_output::OutputCapture;
-                    let (mut capture, mut receiver) = OutputCapture::new(
+                    let (capture, receiver) = OutputCapture::new(
                         name,
                         std::path::PathBuf::from(&log_file),
                         max_size,
@@ -264,9 +263,9 @@ impl ProcessManager {
             }
         }
         
-        let pid = child.id().unwrap() as u32;
+        let pid = child.id().unwrap();
         self.registry.entry(config.name.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(ProcessEntry::new(config.name.clone(), pid, config.clone()));
         Ok(pid)
     }
@@ -383,7 +382,7 @@ impl ProcessManager {
             if let Ok(content) = std::fs::read_to_string(&stat_path) {
                 // Format: pid (name) state ...
                 // State is the 3rd field, e.g., "R", "S", "Z", "X", etc.
-                if let Some(state_start) = content.find('(') {
+                if let Some(_state_start) = content.find('(') {
                     if let Some(state_end) = content.find(')') {
                         if state_end + 2 < content.len() {
                             let state = content.chars().nth(state_end + 2).unwrap_or('X');
@@ -398,7 +397,7 @@ impl ProcessManager {
             }
             
             // Fallback: use kill(pid, 0)
-            use nix::sys::signal::{kill, Signal};
+            use nix::sys::signal::kill;
             use nix::unistd::Pid;
             kill(Pid::from_raw(pid as i32), None).is_ok()
         }
@@ -446,6 +445,10 @@ mod tests {
             auto_restart: false,
             log_file: None,
             max_instances: None,
+            capture_output: false,
+            max_log_size: None,
+            check_interval: None,
+            schedule: None,
         };
         let e = ProcessEntry::new("test".to_string(), 1234, cfg);
         assert_eq!(e.name, "test");

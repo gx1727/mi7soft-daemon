@@ -42,21 +42,28 @@ async fn main() -> anyhow::Result<()> {
 async fn run(cli: &Cli) -> Result<(), DaemonError> {
     let config_path = cli.get_config_path();
 
+    // Load config to get pid_file and log_file from config
+    let config = config::load_config(&config_path).ok();
+    let pid_file_path = config
+        .as_ref()
+        .and_then(|c| c.daemon.as_ref())
+        .map(|d| d.pid_file.as_str())
+        .unwrap_or({
+            #[cfg(unix)]
+            { "/var/run/mi7soft-daemon.pid" }
+            #[cfg(not(unix))]
+            { "mi7soft-daemon.pid" }
+        });
+
     // Check if we should daemonize (skip if MI7SOFT_NO_DAEMON is set)
     let should_daemonize = match &cli.command {
         Commands::Start => cli.daemonize && std::env::var("MI7SOFT_NO_DAEMON").is_err(),
         _ => false,
     };
 
-    #[cfg(unix)]
-    let pid_file_path = "/var/run/mi7soft-daemon.pid";
-
-    #[cfg(not(unix))]
-    let pid_file_path = "mi7soft-daemon.pid";
-
     match &cli.command {
         Commands::Start => {
-            run_daemon(config_path, pid_file_path, should_daemonize).await
+            run_daemon(config_path, pid_file_path, should_daemonize, config.as_ref()).await
         }
         Commands::StartProcess { name } => {
             start_single_process(config_path, name).await
@@ -83,12 +90,37 @@ async fn run(cli: &Cli) -> Result<(), DaemonError> {
 }
 
 #[cfg(unix)]
-async fn run_daemon(config_path: PathBuf, pid_file_path: &str, daemonize: bool) -> Result<(), DaemonError> {
+async fn run_daemon(
+    config_path: PathBuf,
+    pid_file_path: &str,
+    daemonize: bool,
+    config: Option<&config::DaemonConfig>,
+) -> Result<(), DaemonError> {
     if daemonize {
         use daemonize::Daemonize;
+
+        // Get log file paths from config, with fallbacks
+        let (stdout_log, stderr_log) = if let Some(cfg) = config {
+            if let Some(ref daemon) = cfg.daemon {
+                let log_file = &daemon.log_file;
+                (
+                    format!("{}.out", log_file),
+                    format!("{}.err", log_file),
+                )
+            } else {
+                ("/var/log/mi7soft-daemon.out".to_string(), "/var/log/mi7soft-daemon.err".to_string())
+            }
+        } else {
+            ("/var/log/mi7soft-daemon.out".to_string(), "/var/log/mi7soft-daemon.err".to_string())
+        };
+
         let daemon = Daemonize::new()
-            .stdout(std::fs::File::create("/var/log/mi7soft-daemon.out").unwrap())
-            .stderr(std::fs::File::create("/var/log/mi7soft-daemon.err").unwrap());
+            .stdout(std::fs::File::create(&stdout_log).map_err(|e| {
+                DaemonError::Daemonize(format!("Failed to create stdout log {}: {}", stdout_log, e))
+            })?)
+            .stderr(std::fs::File::create(&stderr_log).map_err(|e| {
+                DaemonError::Daemonize(format!("Failed to create stderr log {}: {}", stderr_log, e))
+            })?);
 
         daemon.start()?;
     }
@@ -99,7 +131,12 @@ async fn run_daemon(config_path: PathBuf, pid_file_path: &str, daemonize: bool) 
 }
 
 #[cfg(not(unix))]
-async fn run_daemon(_config_path: PathBuf, _pid_file_path: &str, _daemonize: bool) -> Result<(), DaemonError> {
+async fn run_daemon(
+    _config_path: PathBuf,
+    _pid_file_path: &str,
+    _daemonize: bool,
+    _config: Option<&config::DaemonConfig>,
+) -> Result<(), DaemonError> {
     Err(DaemonError::Daemonize(
         "Daemon mode not supported on Windows".to_string(),
     ))

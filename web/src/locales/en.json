@@ -7,7 +7,7 @@
     "getStarted": "Get Started"
   },
   "home": {
-    "versionBadge": "v0.1.2 - Process Group Management & Logging",
+    "versionBadge": "v0.1.3 - Cron Scheduling & Process Check Interval",
     "heroTitle": "Simple <1>Daemon</1><br />Manager",
     "heroSubtitle": "A lightweight process management tool for Swoole, Hyperf, and microservices. Built with Rust for reliability and performance.",
     "getStarted": "Download",
@@ -39,7 +39,7 @@
     "list": {
       "multiProcess": {
         "title": "Multi-Process Management",
-        "description": "Manage Swoole and other multi-process services. Automatic PGID handling prevents orphan processes.",
+        "description": "Automatic PGID handling prevents orphan processes. Works with any multi-process service.",
         "benefits": ["Prevents orphan processes", "Graceful restart", "Port conflict resolution"]
       },
       "performance": {

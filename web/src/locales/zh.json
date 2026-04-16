@@ -7,7 +7,7 @@
     "getStarted": "开始使用"
   },
   "home": {
-    "versionBadge": "v0.1.2 - 进程组管理 & 日志系统",
+    "versionBadge": "v0.1.3 - Cron 调度 & 进程检查间隔",
     "heroTitle": "简洁的 <1>守护进程</1><br />管理工具",
     "heroSubtitle": "专为 Swoole、Hyperf 和微服务打造的轻量级进程管理工具。基于 Rust 构建，可靠且高效。",
     "getStarted": "下载",
@@ -39,7 +39,7 @@
     "list": {
       "multiProcess": {
         "title": "多进程管理",
-        "description": "管理 Swoole 等多进程服务。自动 PGID 处理，防止孤儿进程。",
+        "description": "自动 PGID 处理，防止孤儿进程，支持任意多进程服务。",
         "benefits": ["防止孤儿进程", "优雅重启", "端口冲突解决"]
       },
       "performance": {

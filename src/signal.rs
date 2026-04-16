@@ -1,4 +1,3 @@
-use crate::error::DaemonError;
 use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -23,11 +22,11 @@ impl SignalHandler {
             use signal_hook::iterator::Signals;
             use std::thread;
             
-            if let Ok(mut signals) = Signals::new(&[SIGTERM, SIGINT, SIGHUP]) {
+            if let Ok(mut signals) = Signals::new([SIGTERM, SIGINT, SIGHUP]) {
                 let tx_clone = tx.clone();
                 thread::spawn(move || {
                     for sig in signals.forever() {
-                        let signal = match sig as i32 {
+                        let signal = match sig {
                             SIGTERM | SIGINT => Signal::Shutdown,
                             SIGHUP => Signal::ReloadConfig,
                             _ => continue,

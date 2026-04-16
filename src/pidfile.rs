@@ -173,7 +173,7 @@ impl PidFile {
     /// Check if process is still running
     #[cfg(unix)]
     fn is_process_alive(&self, pid: u32) -> bool {
-        use nix::sys::signal::{kill, Signal};
+        use nix::sys::signal::kill;
         use nix::unistd::Pid;
 
         // Send signal 0 - no signal is actually sent, just check if process exists
@@ -201,36 +201,44 @@ mod tests {
 
     #[test]
     fn test_pidfile_creation() {
-        let temp_file = NamedTempFile::new().unwrap();
-        let path = temp_file.path().to_str().unwrap().to_string();
+        let temp_dir = std::env::temp_dir();
+        let path = temp_dir.join(format!("test_pidfile_{}.pid", std::process::id()));
 
-        let mut pidfile = PidFile::new(&path);
+        let mut pidfile = PidFile::new(path.to_str().unwrap());
         pidfile.acquire_lock().unwrap();
 
         let pid = pidfile.read_pid().unwrap();
         assert!(pid.is_some());
         assert_eq!(pid.unwrap(), std::process::id());
+
+        // cleanup
+        let _ = pidfile.release_lock();
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]
     fn test_pidfile_duplicate() {
-        let temp_file = NamedTempFile::new().unwrap();
-        let path = temp_file.path().to_str().unwrap().to_string();
+        let temp_dir = std::env::temp_dir();
+        let path = temp_dir.join(format!("test_pidfile_dup_{}.pid", std::process::id()));
 
-        let mut pidfile1 = PidFile::new(&path);
+        let mut pidfile1 = PidFile::new(path.to_str().unwrap());
         pidfile1.acquire_lock().unwrap();
 
-        let mut pidfile2 = PidFile::new(&path);
+        let mut pidfile2 = PidFile::new(path.to_str().unwrap());
         let result = pidfile2.acquire_lock();
         assert!(result.is_err());
+
+        // cleanup
+        let _ = pidfile1.release_lock();
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]
     fn test_pidfile_release() {
-        let temp_file = NamedTempFile::new().unwrap();
-        let path = temp_file.path().to_str().unwrap().to_string();
+        let temp_dir = std::env::temp_dir();
+        let path = temp_dir.join(format!("test_pidfile_rel_{}.pid", std::process::id()));
 
-        let mut pidfile = PidFile::new(&path);
+        let mut pidfile = PidFile::new(path.to_str().unwrap());
         pidfile.acquire_lock().unwrap();
         pidfile.release_lock().unwrap();
 

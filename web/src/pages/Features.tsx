@@ -15,16 +15,17 @@ const Features = () => {
       icon: <Server className="w-6 h-6 text-accent-cyan" />,
       content: (
         <CodeBlock
-          code={`# Swoole 进程架构
-Master (PID: 1234, PGID: 1234)
-├── Manager
-├── Worker 1 (PGID: 1234)
-├── Worker 2 (PGID: 1234)
-└── TaskWorker (PGID: 1234)
+          code={`# 多进程服务进程架构
+Parent (m7d, PID: 1234)
+└── Child Processes
+    ├── nginx (PGID: 5678)
+    ├── worker-1 (PGID: 5678)
+    ├── worker-2 (PGID: 5678)
+    └── task-runner (PGID: 9012)
 
 # restart 时自动杀死整个进程组
-$ m7d restart swoole-server
-> Sending SIGTERM to PGID -1234
+$ m7d restart my-service
+> Sending SIGTERM to PGID 5678
 > All processes terminated
 > Server restarted successfully`}
           language="bash"

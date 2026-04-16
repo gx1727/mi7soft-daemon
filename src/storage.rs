@@ -6,7 +6,7 @@ use rusqlite::{Connection, Result as SqliteResult};
 use rusqlite::OptionalExtension;
 use std::path::PathBuf;
 use chrono::{DateTime, Utc};
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 
 /// 进程历史记录
 #[derive(Debug, Clone)]

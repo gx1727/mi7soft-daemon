@@ -29,7 +29,7 @@ pub fn init_logging(log_file: Option<&str>, verbose: u8) -> anyhow::Result<()> {
         let file_appender = RollingFileAppender::new(
             Rotation::DAILY,
             log_dir.unwrap_or_else(|| PathBuf::from("/var/log")),
-            path.split('/').last().unwrap_or("mi7soft-daemon.log"),
+            path.split('/').next_back().unwrap_or("mi7soft-daemon.log"),
         );
 
         let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);

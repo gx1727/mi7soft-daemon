@@ -239,7 +239,7 @@ impl LogViewer {
     
     /// 按时间过滤日志
     pub async fn since(&self, since_seconds: i64) -> Result<Vec<String>, std::io::Error> {
-        let cutoff = chrono::Utc::now().timestamp() - since_seconds;
+        let _cutoff = chrono::Utc::now().timestamp() - since_seconds;
         let all_lines = self.tail(10000).await?; // 读取最近的 10000 行
         
         let filtered: Vec<String> = all_lines
@@ -247,7 +247,7 @@ impl LogViewer {
             .filter(|line| {
                 // 简单的时间过滤（假设格式正确）
                 if let Some(timestamp_str) = line.split('[').nth(1) {
-                    if let Some(time_str) = timestamp_str.split(']').next() {
+                    if let Some(_time_str) = timestamp_str.split(']').next() {
                         // 解析时间戳（简化版本）
                         // 实际应该更严格地解析
                         return true; // 暂时返回所有行

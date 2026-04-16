@@ -3,6 +3,7 @@ use crate::error::DaemonError;
 use crate::process::{ProcessManager, ProcessStatus, Scheduler};
 use crate::pidfile::PidFile;
 use crate::signal::{Signal, SignalHandler};
+use crate::storage::Storage;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -18,6 +19,7 @@ pub struct Daemon {
     signal_handler: SignalHandler,
     shutdown_tx: Option<mpsc::UnboundedSender<bool>>,
     schedulers: HashMap<String, Scheduler>,
+    storage: Option<Storage>,
 }
 
 impl Daemon {
@@ -58,7 +60,14 @@ impl Daemon {
                 schedulers.insert(proc.name.clone(), scheduler);
             }
         }
-        
+
+        // Initialize storage
+        let db_path = dirs::data_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("mi7soft-daemon")
+            .join("daemon.db");
+        let storage = Storage::new(db_path).ok();
+
         Ok(Self {
             config_path,
             state_file,
@@ -68,6 +77,7 @@ impl Daemon {
             signal_handler: SignalHandler::new(),
             shutdown_tx: None,
             schedulers,
+            storage,
         })
     }
     
@@ -91,7 +101,7 @@ impl Daemon {
             .map(|d| d.check_interval)
             .unwrap_or(5);
         
-        let has_schedulers = !self.schedulers.is_empty();
+        let _has_schedulers = !self.schedulers.is_empty();
         
         let has_schedulers = !self.schedulers.is_empty();
         
@@ -134,7 +144,6 @@ impl Daemon {
                             info!("Received reload config signal");
                             self.reload_config()?;
                         }
-                        _ => {}
                     }
                 }
                 _ = shutdown_rx.recv() => {
@@ -215,12 +224,19 @@ impl Daemon {
                 continue;
             }
             
-            if let Err(e) = self.process_manager.spawn(process_config).await {
-                error!(
-                    process = process_config.name.as_str(),
-                    error = %e,
-                    "Failed to start process"
-                );
+            match self.process_manager.spawn(process_config).await {
+                Ok(pid) => {
+                    if let Some(ref storage) = self.storage {
+                        let _ = storage.record_start(&process_config.name, pid, process_config.auto_restart);
+                    }
+                }
+                Err(e) => {
+                    error!(
+                        process = process_config.name.as_str(),
+                        error = %e,
+                        "Failed to start process"
+                    );
+                }
             }
         }
         Ok(())
@@ -259,12 +275,22 @@ impl Daemon {
         let names = self.process_manager.process_names();
         for name in names {
             info!(process = name.as_str(), "Stopping process");
-            if let Err(e) = self.process_manager.stop(&name).await {
-                error!(
-                    process = name.as_str(),
-                    error = %e,
-                    "Failed to stop process"
-                );
+            match self.process_manager.stop(&name).await {
+                Ok(pids) => {
+                    // Record end for each stopped process
+                    if let Some(ref storage) = self.storage {
+                        for pid in pids {
+                            let _ = storage.record_end(&name, pid, Some(0)); // 0 = normal shutdown
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!(
+                        process = name.as_str(),
+                        error = %e,
+                        "Failed to stop process"
+                    );
+                }
             }
         }
         
@@ -300,7 +326,7 @@ impl Daemon {
     }
     
     fn find_config(&self, name: &str) -> Option<&ProcessConfig> {
-        self.config.processes.iter().find(|p| &p.name == name)
+        self.config.processes.iter().find(|p| p.name == name)
     }
     
     pub fn trigger_shutdown(&self) {
@@ -313,6 +339,10 @@ impl Daemon {
         if let Some(config) = self.find_config(name) {
             let config = config.clone();
             let pid = self.process_manager.spawn(&config).await?;
+            // Record start in storage
+            if let Some(ref storage) = self.storage {
+                let _ = storage.record_start(name, pid, config.auto_restart);
+            }
             self.process_manager.save_state(&self.state_file)?;
             Ok(pid)
         } else {
@@ -322,6 +352,12 @@ impl Daemon {
     
     pub async fn stop_process(&mut self, name: &str) -> Result<Vec<u32>, DaemonError> {
         let pids = self.process_manager.stop(name).await?;
+        // Record end in storage
+        if let Some(ref storage) = self.storage {
+            for pid in &pids {
+                let _ = storage.record_end(name, *pid, Some(0));
+            }
+        }
         self.process_manager.save_state(&self.state_file)?;
         Ok(pids)
     }
@@ -329,7 +365,21 @@ impl Daemon {
     pub async fn restart_process(&mut self, name: &str) -> Result<Vec<u32>, DaemonError> {
         if let Some(config) = self.find_config(name) {
             let config = config.clone();
+            // Stop existing processes first
+            if let Ok(old_pids) = self.process_manager.stop(name).await {
+                if let Some(ref storage) = self.storage {
+                    for pid in &old_pids {
+                        let _ = storage.record_end(name, *pid, Some(0));
+                    }
+                }
+            }
             let pids = self.process_manager.restart(&config).await?;
+            // Record start for new processes
+            if let Some(ref storage) = self.storage {
+                for pid in &pids {
+                    let _ = storage.record_start(name, *pid, config.auto_restart);
+                }
+            }
             self.process_manager.save_state(&self.state_file)?;
             Ok(pids)
         } else {
